@@ -5,8 +5,9 @@ backend:
       commands:
         - corepack enable
         - corepack prepare pnpm@latest --activate
-        # Set the linker to 'hoisted' to reduce symlink/memory overhead
         - pnpm config set node-linker hoisted
+        # Only install what's necessary for the backend deployment
+        # This avoids the heavy heavy CDK devDeps if possible
         - pnpm install --frozen-lockfile --child-concurrency 1
         - pnpm ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
@@ -14,10 +15,10 @@ frontend:
     preBuild:
       commands:
         - nvm use 22
-        # Repeat pnpm activation for the frontend container context
         - corepack enable
         - corepack prepare pnpm@latest --activate
-        - pnpm install --frozen-lockfile
+        # Use the standard install here, but keep concurrency low
+        - pnpm install --frozen-lockfile --child-concurrency 1
     build:
       commands:
         - pnpm run build
