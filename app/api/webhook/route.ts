@@ -1,28 +1,39 @@
 import { NextResponse } from "next/server";
 
+// 1. Handle the "Preflight" handshake
 export async function OPTIONS() {
-  // Handles the "preflight" request Chrome sends before the POST
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*", // For production, use your extension ID
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-webhook-secret",
+      "Access-Control-Allow-Origin": "*", // Allows your extension to talk to the server
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, x-webhook-secret",
     },
   });
 }
 
+// 2. Handle the actual Webhook
 export async function POST(request: Request) {
-  // Add the same headers to your POST response
-  const response = NextResponse.json({ received: true });
-  response.headers.set("Access-Control-Allow-Origin", "*");
+  try {
+    const data = await request.json();
+    console.log("Payload received:", data);
 
-  const data = await request.json();
+    // Your logic here...
 
-  // Log the data to see it in AWS CloudWatch later
-  console.log("Webhook received:", data);
-
-  // Perform your logic here (update DB, send email, etc.)
-
-  return NextResponse.json({ received: true }, { status: 200 });
+    return NextResponse.json(
+      { received: true },
+      {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*", // Required for the response to be readable
+        },
+      },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to parse JSON" },
+      { status: 400 },
+    );
+  }
 }
