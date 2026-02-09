@@ -3,7 +3,10 @@ backend:
   phases:
     build:
       commands:
-        # pnpm doesn't use 'ci', use install --frozen-lockfile
+        # 1. Enable pnpm in the build container
+        - corepack enable
+        - corepack prepare pnpm@latest --activate
+        # 2. Now run your install
         - pnpm install --frozen-lockfile
         - pnpm ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
@@ -11,7 +14,9 @@ frontend:
     preBuild:
       commands:
         - nvm use 22
-        # Use frozen-lockfile here too for faster, consistent builds
+        # Repeat pnpm activation for the frontend container context
+        - corepack enable
+        - corepack prepare pnpm@latest --activate
         - pnpm install --frozen-lockfile
     build:
       commands:
