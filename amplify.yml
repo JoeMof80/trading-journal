@@ -3,11 +3,10 @@ backend:
   phases:
     build:
       commands:
-        # 1. Enable pnpm in the build container
         - corepack enable
         - corepack prepare pnpm@latest --activate
-        # 2. Now run your install
-        # Use child-concurrency to prevent memory spikes
+        # Add the export here, then run the install
+        - export NODE_OPTIONS="--max-old-space-size=12288"
         - pnpm install --frozen-lockfile --child-concurrency 1
         - pnpm ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
