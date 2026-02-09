@@ -5,8 +5,11 @@ backend:
       commands:
         - corepack enable
         - corepack prepare pnpm@latest --activate
-        # Lightweight backend deploy
-        - npx --yes @aws-amplify/backend-cli pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+        # 1. Install ONLY the essential backend packages to satisfy TypeScript
+        # This is much lighter than a full install
+        - pnpm install @aws-amplify/backend @aws-amplify/backend-cli --save-dev
+        # 2. Now run the deploy
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
     preBuild:
