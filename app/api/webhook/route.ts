@@ -1,39 +1,79 @@
 import { NextResponse } from "next/server";
+import { generateClient } from "aws-amplify/api";
+import config from "@/amplify_outputs.json";
+import { Amplify } from "aws-amplify";
 
-// 1. Handle the "Preflight" handshake
+Amplify.configure(config);
+
+const client = generateClient();
+
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*", // Allows your extension to talk to the server
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers":
-        "Content-Type, Authorization, x-webhook-secret",
+  return NextResponse.json(
+    {},
+    {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
     },
-  });
+  );
 }
 
-// 2. Handle the actual Webhook
 export async function POST(request: Request) {
+  console.log("🚀 [WEBHOOK] Request received!");
+
   try {
-    const data = await request.json();
-    console.log("Payload received:", data);
+    const rawData = await request.json();
+    console.log(
+      "📦 [WEBHOOK] Payload from Extension:",
+      JSON.stringify(rawData, null, 2),
+    );
 
-    // Your logic here...
+    // Validation Log
+    if (!rawData.symbol || !rawData.price) {
+      console.warn("⚠️ [WEBHOOK] Missing required fields in payload");
+    }
 
-    return NextResponse.json(
-      { received: true },
+    const { data: newTrade, errors } = await client.models.Trade.create(
       {
-        status: 200,
-        headers: {
-          "Access-Control-Allow-Origin": "*", // Required for the response to be readable
-        },
+        symbol: rawData.symbol,
+        price: parseFloat(rawData.price),
+        quantity: parseFloat(rawData.quantity),
+        side: rawData.side,
+        type: rawData.type,
+        stopLoss: rawData.stopLoss,
+        takeProfit: rawData.takeProfit,
+        timestamp: rawData.timestamp,
+      },
+      {
+        authMode: "apiKey",
       },
     );
-  } catch (error) {
+
+    if (errors) {
+      console.error(
+        "❌ [WEBHOOK] AWS Database Error:",
+        JSON.stringify(errors, null, 2),
+      );
+      return NextResponse.json({ errors }, { status: 500 });
+    }
+
+    console.log("✅ [WEBHOOK] Success! Saved Trade ID:", newTrade?.id);
+
     return NextResponse.json(
-      { error: "Failed to parse JSON" },
-      { status: 400 },
+      { received: true, id: newTrade?.id },
+      {
+        status: 200,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      },
+    );
+  } catch (err) {
+    console.error("🔥 [WEBHOOK] Critical System Error:", err);
+    return NextResponse.json(
+      { error: "System Failure", details: err },
+      { status: 500 },
     );
   }
 }
