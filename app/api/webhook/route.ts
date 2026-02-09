@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { generateClient } from "aws-amplify/api";
 import config from "@/amplify_outputs.json";
 import { Amplify } from "aws-amplify";
+import { type Schema } from "@/amplify/data/resource";
 
 Amplify.configure(config);
 
-const client = generateClient();
+const client = generateClient<Schema>();
 
 export async function OPTIONS() {
   return NextResponse.json(
