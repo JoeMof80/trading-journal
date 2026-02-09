@@ -3,6 +3,7 @@ backend:
   phases:
     build:
       commands:
+        - export NODE_OPTIONS="--max-old-space-size=14336"
         - corepack enable
         - corepack prepare pnpm@latest --activate
         - pnpm config set node-linker hoisted
