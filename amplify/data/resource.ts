@@ -1,15 +1,17 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any user authenticated via an API key can "create", "read",
-"update", and "delete" any "Todo" records.
-=========================================================================*/
 const schema = a.schema({
-  Todo: a
+  // Replacing Todo with Trade
+  Trade: a
     .model({
-      content: a.string(),
+      symbol: a.string().required(),
+      price: a.float().required(),
+      quantity: a.float().required(),
+      side: a.string().required(), // "Buy" or "Sell"
+      type: a.string().required(), // "Limit" or "Market"
+      stopLoss: a.string(),
+      takeProfit: a.string(),
+      timestamp: a.datetime().required(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
@@ -21,7 +23,7 @@ export const data = defineData({
   authorizationModes: {
     defaultAuthorizationMode: "apiKey",
     apiKeyAuthorizationMode: {
-      expiresInDays: 30,
+      expiresInDays: 30, // Remember to renew this or use IAM later!
     },
   },
 });
