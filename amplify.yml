@@ -5,8 +5,7 @@ backend:
       commands:
         - corepack enable
         - corepack prepare pnpm@latest --activate
-        # Bypass the giant install. Use npx to run the deploy tool directly.
-        # This only downloads what's needed for the backend.
+        # Lightweight backend deploy
         - npx --yes @aws-amplify/backend-cli pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
@@ -15,8 +14,7 @@ frontend:
         - nvm use 20
         - corepack enable
         - corepack prepare pnpm@latest --activate
-        # The frontend still needs an install, but we do it here.
-        - pnpm install --frozen-lockfile --child-concurrency 1
+        - pnpm install --frozen-lockfile
     build:
       commands:
         - pnpm run build
@@ -27,4 +25,4 @@ frontend:
   cache:
     paths:
       - .next/cache/**/*
-      - .pnpm-store/**/*
+      - node_modules/**/*
