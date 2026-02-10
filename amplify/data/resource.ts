@@ -9,6 +9,7 @@ const schema = a.schema({
       quantity: a.float().required(),
       side: a.string().required(), // "Buy" or "Sell"
       type: a.string().required(), // "Limit" or "Market"
+      timeframe: a.string(),
       stopLoss: a.string(),
       takeProfit: a.string(),
       timestamp: a.datetime().required(),

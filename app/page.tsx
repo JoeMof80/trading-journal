@@ -6,7 +6,7 @@ import type { Schema } from "@/amplify/data/resource";
 import { Amplify } from "aws-amplify";
 import outputs from "@/amplify_outputs.json";
 
-// Icons
+// Standard UI Icons
 import {
   Check,
   Copy,
@@ -21,6 +21,7 @@ import {
   Award,
   Camera,
   Fingerprint,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -52,13 +53,33 @@ export default function TradeJournal() {
   >(null);
 
   useEffect(() => {
-    const hasDataModel = client.models?.Trade;
-    if (!hasDataModel) return;
+    // Real-time subscription to your Amplify Cloud Sandbox
     const sub = client.models.Trade.observeQuery().subscribe({
       next: (data) => setTrades([...data.items]),
+      error: (err) => console.error("Cloud Connection Error:", err),
     });
     return () => sub.unsubscribe();
   }, []);
+
+  // Quick function to seed your sandbox with data
+  const createTrade = async () => {
+    try {
+      const { data, errors } = await client.models.Trade.create({
+        symbol: "BTC/USDT",
+        side: "Buy",
+        price: 68500.25,
+        quantity: 0.1,
+        type: "Limit",
+        timeframe: "1HR",
+        timestamp: new Date().toISOString(),
+      });
+
+      if (errors) console.error("Create Trade Error:", errors);
+      else console.log("Trade created successfully:", data);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  };
 
   const DataField = ({
     label,
@@ -70,13 +91,6 @@ export default function TradeJournal() {
     icon: any;
   }) => {
     const [copied, setCopied] = React.useState(false);
-
-    const handleCopy = () => {
-      navigator.clipboard.writeText(value?.toString() || "");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
     return (
       <div className="flex flex-col gap-1 border-b py-4">
         <div className="flex items-center gap-2">
@@ -86,12 +100,16 @@ export default function TradeJournal() {
           </span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className="font-mono text-sm truncate">{value}</span>
+          <span className="font-mono text-sm truncate">{value || "N/A"}</span>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
-            onClick={handleCopy}
+            onClick={() => {
+              navigator.clipboard.writeText(value?.toString() || "");
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
           >
             {copied ? (
               <Check className="h-3 w-3 text-green-500" />
@@ -106,33 +124,54 @@ export default function TradeJournal() {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="mb-6 border-b pb-4">
-        <h1 className="text-xl font-bold">Trade Review</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold tracking-tighter">TRADES</h1>
+        <Button onClick={createTrade} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" /> Add Test Trade
+        </Button>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Symbol</TableHead>
-            <TableHead>Side</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {trades.map((trade) => (
-            <TableRow
-              key={trade.id}
-              onClick={() => setSelectedTrade(trade)}
-              className="cursor-pointer"
-            >
-              <TableCell className="font-medium">{trade.symbol}</TableCell>
-              <TableCell>{trade.side}</TableCell>
-              <TableCell className="text-right font-mono">
-                {trade.price}
-              </TableCell>
+
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Symbol</TableHead>
+              <TableHead>Side</TableHead>
+              <TableHead>Timeframe</TableHead>
+              <TableHead className="text-right">Price</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {trades.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={3}
+                  className="text-center py-10 text-muted-foreground"
+                >
+                  No trades found in sandbox. Click "Add Test Trade" to begin.
+                </TableCell>
+              </TableRow>
+            ) : (
+              trades.map((trade) => (
+                <TableRow
+                  key={trade.id}
+                  onClick={() => setSelectedTrade(trade)}
+                  className="cursor-pointer"
+                >
+                  <TableCell className="font-medium">{trade.symbol}</TableCell>
+                  <TableCell>{trade.side}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {trade.timeframe}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {trade.price}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <Sheet open={!!selectedTrade} onOpenChange={() => setSelectedTrade(null)}>
         <SheetContent
@@ -140,15 +179,22 @@ export default function TradeJournal() {
           className="w-full sm:max-w-md overflow-y-auto p-6"
         >
           <SheetHeader className="mb-6 border-b pb-4">
-            <SheetTitle className="text-xl font-bold">Trade Review</SheetTitle>
+            <SheetTitle className="text-xl font-bold uppercase">
+              Trade Review
+            </SheetTitle>
           </SheetHeader>
 
           <div className="flex flex-col">
+            <DataField label="METHOD" value="Fibonacci" icon={Settings} />
             <DataField label="METHOD" value="VWAP REJECTION" icon={Settings} />
-            <DataField label="TIMEFRAME" value="15M" icon={Clock} />
+            <DataField
+              label="TIMEFRAME"
+              value={selectedTrade?.timeframe}
+              icon={Clock}
+            />
             <DataField
               label="SYMBOL"
-              value={selectedTrade?.symbol || ""}
+              value={selectedTrade?.symbol}
               icon={Tag}
             />
             <DataField
@@ -158,11 +204,19 @@ export default function TradeJournal() {
             />
             <DataField
               label="ENTRY PRICE"
-              value={selectedTrade?.price || ""}
+              value={selectedTrade?.price}
               icon={ArrowUpCircle}
             />
-            <DataField label="STOP LOSS" value="64100" icon={ArrowDownCircle} />
-            <DataField label="TAKE PROFIT" value="68000" icon={TrendingUp} />
+            <DataField
+              label="STOP LOSS"
+              value="Calculated or Hardcoded"
+              icon={ArrowDownCircle}
+            />
+            <DataField
+              label="TAKE PROFIT"
+              value="Calculated or Hardcoded"
+              icon={TrendingUp}
+            />
 
             <div className="flex flex-col gap-2 border-b py-4">
               <div className="flex items-center gap-2">
@@ -173,7 +227,6 @@ export default function TradeJournal() {
               </div>
               <ul className="list-disc pl-5 text-sm space-y-1">
                 <li>Trend alignment</li>
-                <li>Volume support</li>
               </ul>
             </div>
 
@@ -198,30 +251,18 @@ export default function TradeJournal() {
                   SCREENSHOTS
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-2">
-                <div className="aspect-video w-full bg-muted flex items-center justify-center border rounded-sm">
-                  <span className="text-xs text-muted-foreground">
-                    Chart Image
-                  </span>
-                </div>
+              <div className="aspect-video w-full bg-muted flex items-center justify-center border rounded-sm">
+                <span className="text-xs text-muted-foreground">
+                  Chart Image Placeholder
+                </span>
               </div>
             </div>
 
             <DataField
               label="SYSTEM ID"
-              value={selectedTrade?.id || ""}
+              value={selectedTrade?.id}
               icon={Fingerprint}
             />
-          </div>
-
-          <div className="mt-6">
-            <Button
-              className="w-full"
-              variant="secondary"
-              onClick={() => setSelectedTrade(null)}
-            >
-              Close
-            </Button>
           </div>
         </SheetContent>
       </Sheet>
