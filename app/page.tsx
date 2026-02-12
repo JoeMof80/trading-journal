@@ -137,6 +137,8 @@ export default function TradeJournal() {
     );
   };
 
+  console.log("Current Trades in State:", trades);
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -151,9 +153,11 @@ export default function TradeJournal() {
           <TableHeader>
             <TableRow>
               <TableHead>Symbol</TableHead>
-              <TableHead>Side</TableHead>
+              <TableHead>Order</TableHead>
               <TableHead>Timeframe</TableHead>
-              <TableHead className="text-right">Price</TableHead>
+              <TableHead>Entry</TableHead>
+              <TableHead>Stop Loss</TableHead>
+              <TableHead>Take Profit</TableHead>
               <TableHead className="w-12.5"></TableHead>
             </TableRow>
           </TableHeader>
@@ -179,8 +183,14 @@ export default function TradeJournal() {
                   <TableCell className="text-muted-foreground">
                     {trade.timeframe}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-muted-foreground">
                     {trade.price}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {trade.stopLoss || "N/A"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {trade.takeProfit || "N/A"}
                   </TableCell>
                   <TableCell>
                     <Button
