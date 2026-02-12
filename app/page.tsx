@@ -22,6 +22,7 @@ import {
   Camera,
   Fingerprint,
   Plus,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -78,6 +79,20 @@ export default function TradeJournal() {
       else console.log("Trade created successfully:", data);
     } catch (err) {
       console.error("Unexpected error:", err);
+    }
+  };
+
+  const deleteTrade = async (id: string, e: React.MouseEvent) => {
+    // Prevent the row's onClick (opening the sheet) from firing
+    e.stopPropagation();
+
+    if (!window.confirm("Are you sure you want to delete this trade?")) return;
+
+    try {
+      await client.models.Trade.delete({ id });
+      console.log("Trade deleted:", id);
+    } catch (err) {
+      console.error("Delete Error:", err);
     }
   };
 
@@ -139,6 +154,7 @@ export default function TradeJournal() {
               <TableHead>Side</TableHead>
               <TableHead>Timeframe</TableHead>
               <TableHead className="text-right">Price</TableHead>
+              <TableHead className="w-12.5"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,6 +182,16 @@ export default function TradeJournal() {
                   <TableCell className="text-right font-mono">
                     {trade.price}
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-red-600 hover:bg-red-50"
+                      onClick={(e) => deleteTrade(trade.id, e)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -186,7 +212,6 @@ export default function TradeJournal() {
 
           <div className="flex flex-col">
             <DataField label="METHOD" value="Fibonacci" icon={Settings} />
-            <DataField label="METHOD" value="VWAP REJECTION" icon={Settings} />
             <DataField
               label="TIMEFRAME"
               value={selectedTrade?.timeframe}
@@ -199,7 +224,7 @@ export default function TradeJournal() {
             />
             <DataField
               label="ORDER"
-              value={`${selectedTrade?.side} ${selectedTrade?.type}`}
+              value={selectedTrade?.side}
               icon={ShoppingCart}
             />
             <DataField
@@ -209,12 +234,12 @@ export default function TradeJournal() {
             />
             <DataField
               label="STOP LOSS"
-              value="Calculated or Hardcoded"
+              value={selectedTrade?.stopLoss || "Calculated or Hardcoded"}
               icon={ArrowDownCircle}
             />
             <DataField
               label="TAKE PROFIT"
-              value="Calculated or Hardcoded"
+              value={selectedTrade?.takeProfit || "Calculated or Hardcoded"}
               icon={TrendingUp}
             />
 
