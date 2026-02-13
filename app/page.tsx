@@ -23,6 +23,7 @@ import {
   Fingerprint,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
 
 import {
@@ -40,6 +41,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 if (outputs && Object.keys(outputs).length > 0) {
   Amplify.configure(outputs);
@@ -47,11 +49,106 @@ if (outputs && Object.keys(outputs).length > 0) {
 
 const client = generateClient<Schema>();
 
+// --- Toggle Group Component ---
+function ToggleGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  return (
+    <div className="flex gap-1">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={`px-3 py-1.5 rounded-sm text-xs font-bold uppercase tracking-wider border transition-all duration-150
+            ${
+              value === opt
+                ? "bg-foreground text-background border-foreground"
+                : "bg-background text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+            }`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// --- Bullet List Editor Component ---
+function BulletListEditor({
+  items,
+  onChange,
+  placeholder,
+}: {
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder?: string;
+}) {
+  const addItem = () => onChange([...items, ""]);
+
+  const updateItem = (index: number, value: string) => {
+    const updated = [...items];
+    updated[index] = value;
+    onChange(updated);
+  };
+
+  const removeItem = (index: number) => {
+    onChange(items.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((item, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs mt-0.5 select-none">
+            •
+          </span>
+          <Input
+            value={item}
+            onChange={(e) => updateItem(index, e.target.value)}
+            placeholder={placeholder || "Add a point..."}
+            className="h-8 text-sm flex-1"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={() => removeItem(index)}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-fit gap-1.5 h-8 text-xs mt-1"
+        onClick={addItem}
+      >
+        <Plus className="h-3 w-3" />
+        Add point
+      </Button>
+    </div>
+  );
+}
+
 export default function TradeJournal() {
   const [trades, setTrades] = useState<Array<Schema["Trade"]["type"]>>([]);
   const [selectedTrade, setSelectedTrade] = useState<
     Schema["Trade"]["type"] | null
   >(null);
+
+  // Review panel state
+  const [timeframe, setTimeframe] = useState("1HR");
+  const [grade, setGrade] = useState("A");
+  const [pros, setPros] = useState<string[]>(["Trend alignment"]);
+  const [cons, setCons] = useState<string[]>(["Higher timeframe resistance"]);
 
   useEffect(() => {
     // Real-time subscription to your Amplify Cloud Sandbox
@@ -62,14 +159,25 @@ export default function TradeJournal() {
     return () => sub.unsubscribe();
   }, []);
 
+  // Reset review panel state when a new trade is selected
+  const handleSelectTrade = (trade: Schema["Trade"]["type"]) => {
+    setSelectedTrade(trade);
+    setTimeframe("1HR");
+    setGrade("A");
+    setPros(["Trend alignment"]);
+    setCons(["Higher timeframe resistance"]);
+  };
+
   // Quick function to seed your sandbox with data
   const createTrade = async () => {
     try {
       const { data, errors } = await client.models.Trade.create({
-        symbol: "BTC/USDT",
+        symbol: "GBP/USD",
         side: "Buy",
-        price: 68500.25,
-        quantity: 0.1,
+        price: 1.36498,
+        stopLoss: 1.37317,
+        takeProfit: 1.34587,
+        quantity: 0.25,
         type: "Limit",
         timeframe: "1HR",
         timestamp: new Date().toISOString(),
@@ -175,7 +283,7 @@ export default function TradeJournal() {
               trades.map((trade) => (
                 <TableRow
                   key={trade.id}
-                  onClick={() => setSelectedTrade(trade)}
+                  onClick={() => handleSelectTrade(trade)}
                   className="cursor-pointer"
                 >
                   <TableCell className="font-medium">{trade.symbol}</TableCell>
@@ -222,11 +330,22 @@ export default function TradeJournal() {
 
           <div className="flex flex-col">
             <DataField label="METHOD" value="Fibonacci" icon={Settings} />
-            <DataField
-              label="TIMEFRAME"
-              value={selectedTrade?.timeframe}
-              icon={Clock}
-            />
+
+            {/* TIMEFRAME — Toggle Group */}
+            <div className="flex flex-col gap-2 border-b py-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  Timeframe
+                </span>
+              </div>
+              <ToggleGroup
+                options={["15MIN", "1HR", "4HR"]}
+                value={timeframe}
+                onChange={setTimeframe}
+              />
+            </div>
+
             <DataField
               label="SYMBOL"
               value={selectedTrade?.symbol}
@@ -253,6 +372,7 @@ export default function TradeJournal() {
               icon={TrendingUp}
             />
 
+            {/* PROS — Editable Bullet List */}
             <div className="flex flex-col gap-2 border-b py-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-3 w-3 text-green-500" />
@@ -260,11 +380,14 @@ export default function TradeJournal() {
                   PROS
                 </span>
               </div>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                <li>Trend alignment</li>
-              </ul>
+              <BulletListEditor
+                items={pros}
+                onChange={setPros}
+                placeholder="Add a pro..."
+              />
             </div>
 
+            {/* CONS — Editable Bullet List */}
             <div className="flex flex-col gap-2 border-b py-4">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-3 w-3 text-red-500" />
@@ -272,12 +395,27 @@ export default function TradeJournal() {
                   CONS
                 </span>
               </div>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                <li>Higher timeframe resistance</li>
-              </ul>
+              <BulletListEditor
+                items={cons}
+                onChange={setCons}
+                placeholder="Add a con..."
+              />
             </div>
 
-            <DataField label="GRADE" value="A" icon={Award} />
+            {/* GRADE — Toggle Group */}
+            <div className="flex flex-col gap-2 border-b py-4">
+              <div className="flex items-center gap-2">
+                <Award className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  GRADE
+                </span>
+              </div>
+              <ToggleGroup
+                options={["A+", "A", "B"]}
+                value={grade}
+                onChange={setGrade}
+              />
+            </div>
 
             <div className="flex flex-col gap-3 py-4 border-b">
               <div className="flex items-center gap-2">
