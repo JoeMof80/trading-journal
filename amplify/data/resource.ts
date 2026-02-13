@@ -20,9 +20,13 @@ const schema = a.schema({
       pairId: a.string().required(),
       date: a.date().required(),
       weekly: a.string(),
+      weeklyScreenshot: a.string(),
       daily: a.string(),
+      dailyScreenshot: a.string(),
       fourHr: a.string(),
+      fourHrScreenshot: a.string(),
       oneHr: a.string(),
+      oneHrScreenshot: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

@@ -12,11 +12,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FOREX_PAIRS, TIMEFRAMES } from "@/constants";
-import { Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { FOREX_PAIRS } from "@/constants";
+import { Bookmark, Check, Loader2, Trash2 } from "lucide-react";
+import { TradeAnalysisRow } from "./TradeAnalysisRow";
+import { DraftAnalysis } from "@/types/types";
 
 if (outputs && Object.keys(outputs).length > 0) {
   Amplify.configure(outputs);
@@ -24,66 +25,263 @@ if (outputs && Object.keys(outputs).length > 0) {
 
 const client = generateClient<Schema>();
 
-// Maps TIMEFRAMES labels to model field keys
-const TF_KEYS: Record<string, "weekly" | "daily" | "fourHr" | "oneHr"> = {
-  Weekly: "weekly",
-  Daily: "daily",
-  "4hr": "fourHr",
-  "1hr": "oneHr",
-};
-
 type Analysis = Schema["PreTradeAnalysis"]["type"];
 
-type DraftAnalysis = {
-  weekly: string;
-  daily: string;
-  fourHr: string;
-  oneHr: string;
-};
+// ── Flag system ───────────────────────────────────────────────────────────────
+//
+// Matches TradingView's watchlist flag colours.
+// Suggested usage:
+//
+//   🔴 Red    — Strong bearish bias. Clear downtrend across timeframes. Avoid longs.
+//   🟠 Orange — Bearish lean but uncertain. Conflicting signals or ranging market.
+//   🟡 Yellow — Neutral / watching. No clear edge yet. Monitor for setup.
+//   🟢 Green  — Bullish bias. Trend aligned, looking for long entries.
+//   🔵 Blue   — Active trade or prime setup ready to execute.
+//   🟣 Purple — Macro/fundamental watch. High-impact event or news driver.
+//   ⬜ None   — Unreviewed / no flag.
+
+export type FlagColor =
+  | "none"
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "purple";
+
+const FLAG_OPTIONS: {
+  value: FlagColor;
+  bg: string;
+  headerBg: string;
+  label: string;
+}[] = [
+  {
+    value: "none",
+    bg: "bg-muted",
+    headerBg: "bg-muted/30",
+    label: "None — unreviewed",
+  },
+  {
+    value: "red",
+    bg: "bg-red-500",
+    headerBg: "bg-red-50/70",
+    label: "Red — bearish, avoid longs",
+  },
+  {
+    value: "orange",
+    bg: "bg-orange-400",
+    headerBg: "bg-orange-50/70",
+    label: "Orange — bearish lean, uncertain",
+  },
+  {
+    value: "yellow",
+    bg: "bg-yellow-400",
+    headerBg: "bg-yellow-50/70",
+    label: "Yellow — neutral, watching",
+  },
+  {
+    value: "green",
+    bg: "bg-green-500",
+    headerBg: "bg-green-50/70",
+    label: "Green — bullish, look for longs",
+  },
+  {
+    value: "blue",
+    bg: "bg-blue-500",
+    headerBg: "bg-blue-50/70",
+    label: "Blue — active trade / prime setup",
+  },
+  {
+    value: "purple",
+    bg: "bg-purple-500",
+    headerBg: "bg-purple-50/70",
+    label: "Purple — macro / news watch",
+  },
+];
+
+function getFlagOption(color: FlagColor) {
+  return FLAG_OPTIONS.find((f) => f.value === color) ?? FLAG_OPTIONS[0];
+}
+
+// ── Flag picker ───────────────────────────────────────────────────────────────
+// Bookmark icon rotated 90° to match TradingView's flag appearance.
+// Integrated directly into the pair badge.
+
+function FlaggedBadge({
+  name,
+  flag,
+  onChange,
+}: {
+  name: string;
+  flag: FlagColor;
+  onChange: (c: FlagColor) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = getFlagOption(flag);
+
+  // Colour for the bookmark icon itself
+  const iconColor: Record<FlagColor, string> = {
+    none: "text-muted-foreground/40",
+    red: "text-red-500",
+    orange: "text-orange-400",
+    yellow: "text-yellow-400",
+    green: "text-green-500",
+    blue: "text-blue-500",
+    purple: "text-purple-500",
+  };
+
+  return (
+    <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div
+        role="button"
+        tabIndex={0}
+        title={`Flag: ${current.label}`}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => e.key === "Enter" && setOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-sm font-bold tracking-wider hover:bg-muted/60 transition-colors focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer select-none"
+      >
+        {/* Bookmark rotated 90° = flag pointing right, like TradingView */}
+        <Bookmark
+          className={`h-3.5 w-3.5 shrink-0 rotate-90 transition-colors ${
+            flag !== "none"
+              ? `${iconColor[flag]} fill-current`
+              : iconColor[flag]
+          }`}
+        />
+        {name}
+      </div>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-8 z-20 flex flex-col gap-0.5 rounded-md border bg-popover p-2 shadow-md min-w-[230px]">
+            {FLAG_OPTIONS.map((opt) => (
+              <div
+                key={opt.value}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && (onChange(opt.value), setOpen(false))
+                }
+                className={`flex items-center gap-2.5 rounded px-2 py-1.5 text-xs text-left hover:bg-muted transition-colors w-full cursor-pointer
+                  ${flag === opt.value ? "bg-muted font-semibold" : ""}`}
+              >
+                <Bookmark
+                  className={`h-3 w-3 rotate-90 shrink-0 ${
+                    opt.value === "none"
+                      ? "text-muted-foreground/40"
+                      : `${iconColor[opt.value]} fill-current`
+                  }`}
+                />
+                {opt.label}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Summary snippet ───────────────────────────────────────────────────────────
+// Shows all four timeframes as labelled truncated chips, aligned with
+// the expanded content columns.
+
+const SUMMARY_FIELDS: { label: string; key: keyof Analysis }[] = [
+  { label: "W", key: "weekly" },
+  { label: "D", key: "daily" },
+  { label: "4H", key: "fourHr" },
+  { label: "1H", key: "oneHr" },
+];
+
+function AnalysisSummary({ analysis }: { analysis: Analysis }) {
+  const hasAny = SUMMARY_FIELDS.some(
+    (f) => !!(analysis[f.key] as string)?.trim(),
+  );
+  if (!hasAny) return null;
+
+  return (
+    <div className="flex items-center gap-1 min-w-0 flex-1 ml-2">
+      {SUMMARY_FIELDS.map(({ label, key }) => {
+        const text = (analysis[key] as string | null | undefined)?.trim();
+        return (
+          <div
+            key={label}
+            className="flex items-center gap-1 flex-1 min-w-0 bg-background/60 rounded px-1.5 py-0.5 border border-border/50"
+          >
+            <span className="text-[10px] font-bold text-muted-foreground/60 shrink-0 uppercase">
+              {label}
+            </span>
+            <span className="text-[11px] text-muted-foreground truncate">
+              {text || "—"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Empty draft ───────────────────────────────────────────────────────────────
 
 const EMPTY_DRAFT: DraftAnalysis = {
   weekly: "",
+  weeklyScreenshot: "",
   daily: "",
+  dailyScreenshot: "",
   fourHr: "",
+  fourHrScreenshot: "",
   oneHr: "",
+  oneHrScreenshot: "",
 };
 
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function PreTradeAnalysis() {
-  // analyses keyed by pairId
   const [analyses, setAnalyses] = useState<Record<string, Analysis[]>>({});
-  // draft state keyed by pairId
   const [drafts, setDrafts] = useState<Record<string, DraftAnalysis>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
+  const [flags, setFlags] = useState<Record<string, FlagColor>>({});
 
   useEffect(() => {
-    // Subscribe to all PreTradeAnalysis records
+    if (!client.models.PreTradeAnalysis) {
+      console.warn(
+        "PreTradeAnalysis model not found. Run `npx ampx sandbox` to deploy the updated schema.",
+      );
+      return;
+    }
     const sub = client.models.PreTradeAnalysis.observeQuery().subscribe({
       next: ({ items }) => {
-        // Group by pairId
         const grouped: Record<string, Analysis[]> = {};
         for (const item of items) {
           if (!grouped[item.pairId]) grouped[item.pairId] = [];
           grouped[item.pairId].push(item);
         }
-        // Sort each group by date descending
         for (const key in grouped) {
           grouped[key].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
           );
         }
         setAnalyses(grouped);
       },
       error: (err) => console.error("Subscription error:", err),
     });
-
     return () => sub.unsubscribe();
   }, []);
 
   const getDraft = (pairId: string): DraftAnalysis =>
     drafts[pairId] ?? { ...EMPTY_DRAFT };
 
-  const setDraft = (pairId: string, field: keyof DraftAnalysis, value: string) => {
+  const setDraftField = (
+    pairId: string,
+    field: keyof DraftAnalysis,
+    value: string,
+  ) => {
     setDrafts((prev) => ({
       ...prev,
       [pairId]: { ...getDraft(pairId), [field]: value },
@@ -95,6 +293,7 @@ export default function PreTradeAnalysis() {
   };
 
   const saveAnalysis = async (pairId: string) => {
+    if (!client.models.PreTradeAnalysis) return;
     const draft = getDraft(pairId);
     setSaving((prev) => ({ ...prev, [pairId]: true }));
     try {
@@ -102,15 +301,16 @@ export default function PreTradeAnalysis() {
         pairId,
         date: new Date().toISOString().split("T")[0],
         weekly: draft.weekly || undefined,
+        weeklyScreenshot: draft.weeklyScreenshot || undefined,
         daily: draft.daily || undefined,
+        dailyScreenshot: draft.dailyScreenshot || undefined,
         fourHr: draft.fourHr || undefined,
+        fourHrScreenshot: draft.fourHrScreenshot || undefined,
         oneHr: draft.oneHr || undefined,
+        oneHrScreenshot: draft.oneHrScreenshot || undefined,
       });
-      if (errors) {
-        console.error("Save errors:", errors);
-      } else {
-        clearDraft(pairId);
-      }
+      if (errors) console.error("Save errors:", errors);
+      else clearDraft(pairId);
     } catch (err) {
       console.error("Save failed:", err);
     } finally {
@@ -119,6 +319,7 @@ export default function PreTradeAnalysis() {
   };
 
   const deleteAnalysis = async (id: string) => {
+    if (!client.models.PreTradeAnalysis) return;
     setDeleting((prev) => ({ ...prev, [id]: true }));
     try {
       await client.models.PreTradeAnalysis.delete({ id });
@@ -141,24 +342,38 @@ export default function PreTradeAnalysis() {
           const pairAnalyses = analyses[pair.id] ?? [];
           const draft = getDraft(pair.id);
           const isSaving = saving[pair.id] ?? false;
+          const flag = flags[pair.id] ?? "none";
+          const flagOpt = getFlagOption(flag);
+          const latestAnalysis = pairAnalyses[0] ?? null;
 
           return (
             <AccordionItem key={pair.id} value={pair.id}>
-              <AccordionTrigger>
-                <Badge
-                  variant="outline"
-                  className="text-sm font-bold tracking-wider"
-                >
-                  {pair.name}
-                </Badge>
+              <AccordionTrigger
+                className={`px-3 rounded-sm transition-colors ${flagOpt.headerBg}`}
+              >
+                {/* Use w-full so the summary can stretch across the full trigger width */}
+                <div className="flex items-center gap-2 w-full mr-2 min-w-0">
+                  <FlaggedBadge
+                    name={pair.name}
+                    flag={flag}
+                    onChange={(c) =>
+                      setFlags((prev) => ({ ...prev, [pair.id]: c }))
+                    }
+                  />
+                  {latestAnalysis && (
+                    <AnalysisSummary analysis={latestAnalysis} />
+                  )}
+                </div>
               </AccordionTrigger>
+
               <AccordionContent>
-                {/* New entry row */}
-                <AnalysisRow
+                <TradeAnalysisRow
                   date={new Date().toISOString().split("T")[0]}
                   values={draft}
-                  onChange={(field, value) => setDraft(pair.id, field, value)}
-                  actions={
+                  onChange={(field, value) =>
+                    setDraftField(pair.id, field, value)
+                  }
+                  rowActions={
                     <>
                       <Button
                         size="icon"
@@ -187,7 +402,6 @@ export default function PreTradeAnalysis() {
                   }
                 />
 
-                {/* Saved entries */}
                 {pairAnalyses.length === 0 ? (
                   <>
                     <Separator className="my-4" />
@@ -202,16 +416,20 @@ export default function PreTradeAnalysis() {
                     return (
                       <div key={analysis.id}>
                         <Separator className="my-4" />
-                        <AnalysisRow
+                        <TradeAnalysisRow
                           date={analysis.date}
                           values={{
                             weekly: analysis.weekly ?? "",
+                            weeklyScreenshot: analysis.weeklyScreenshot ?? "",
                             daily: analysis.daily ?? "",
+                            dailyScreenshot: analysis.dailyScreenshot ?? "",
                             fourHr: analysis.fourHr ?? "",
+                            fourHrScreenshot: analysis.fourHrScreenshot ?? "",
                             oneHr: analysis.oneHr ?? "",
+                            oneHrScreenshot: analysis.oneHrScreenshot ?? "",
                           }}
                           readOnly
-                          actions={
+                          rowActions={
                             <Button
                               size="icon"
                               variant="ghost"
@@ -237,50 +455,6 @@ export default function PreTradeAnalysis() {
           );
         })}
       </Accordion>
-    </div>
-  );
-}
-
-// Shared row component for both new-entry and read-only saved entries
-function AnalysisRow({
-  date,
-  values,
-  onChange,
-  readOnly = false,
-  actions,
-}: {
-  date: string;
-  values: DraftAnalysis;
-  onChange?: (field: keyof DraftAnalysis, value: string) => void;
-  readOnly?: boolean;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <div className="flex w-full gap-4">
-      <p className="flex flex-col flex-1 ml-3 text-xs font-medium text-muted-foreground tabular-nums pt-1 min-w-fit">
-        {date}
-      </p>
-      {TIMEFRAMES.map((tf) => {
-        const field = TF_KEYS[tf];
-        return (
-          <div key={tf} className="flex flex-col flex-1 gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              {tf}
-            </label>
-            <textarea
-              value={values[field]}
-              onChange={(e) => onChange?.(field, e.target.value)}
-              readOnly={readOnly}
-              placeholder={readOnly ? "—" : "Notes..."}
-              className="mt-1 p-2 border rounded text-sm leading-relaxed resize-none h-20 bg-muted/40 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
-            />
-          </div>
-        );
-      })}
-      {/* Action buttons column */}
-      <div className="flex flex-col justify-center gap-2 mt-5">
-        {actions}
-      </div>
     </div>
   );
 }
