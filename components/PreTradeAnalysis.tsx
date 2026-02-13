@@ -142,7 +142,7 @@ function FlaggedBadge({
       >
         {/* Bookmark rotated 90° = flag pointing right, like TradingView */}
         <Bookmark
-          className={`h-3.5 w-3.5 shrink-0 rotate-90 transition-colors ${
+          className={`h-3.5 w-3.5 shrink-0 rotate-270 transition-colors ${
             flag !== "none"
               ? `${iconColor[flag]} fill-current`
               : iconColor[flag]
@@ -171,7 +171,7 @@ function FlaggedBadge({
                   ${flag === opt.value ? "bg-muted font-semibold" : ""}`}
               >
                 <Bookmark
-                  className={`h-3 w-3 rotate-90 shrink-0 ${
+                  className={`h-3 w-3 rotate-270 shrink-0 ${
                     opt.value === "none"
                       ? "text-muted-foreground/40"
                       : `${iconColor[opt.value]} fill-current`
