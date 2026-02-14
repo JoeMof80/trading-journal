@@ -46,13 +46,11 @@ export function TimeframeCard({
     });
   }
 
-  // Reads an image file/blob and stores it as base64
   const storeImage = async (blob: Blob) => {
     const base64 = await fileToBase64(blob as File);
     onChange?.(screenshotField, base64);
   };
 
-  // Paste handler — triggered when the drop zone is focused and user hits Cmd/Ctrl+V
   const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
     const items = Array.from(e.clipboardData.items);
     const imageItem = items.find((item) => item.type.startsWith("image/"));
@@ -64,18 +62,25 @@ export function TimeframeCard({
 
   return (
     <div className="flex flex-col flex-1 gap-1.5 min-w-0">
-      {/* Label + copy button */}
-      <div className="flex items-center justify-between">
-        <label className="ml-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          {label}
-        </label>
+      {/* Textarea with copy button overlaid in bottom-right corner */}
+      <div className="relative group/note">
+        <textarea
+          value={noteValue}
+          onChange={(e) => onChange?.(noteField, e.target.value)}
+          readOnly={readOnly}
+          placeholder={readOnly ? "—" : "Notes..."}
+          className="w-full px-3 py-2 border rounded text-sm leading-relaxed resize-none h-20 bg-muted/40 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        {/* Copy button — appears on hover or when there's content */}
         <Button
           size="icon"
           variant="ghost"
-          className="h-6 w-6"
+          className={`absolute bottom-1.5 right-1.5 h-5 w-5 transition-opacity
+            ${noteValue ? "opacity-40 hover:opacity-100" : "opacity-0 group-hover/note:opacity-30"}`}
           onClick={handleCopy}
           disabled={!noteValue}
           title="Copy notes"
+          tabIndex={-1}
         >
           {copied ? (
             <Check className="h-3 w-3 text-green-500" />
@@ -84,15 +89,6 @@ export function TimeframeCard({
           )}
         </Button>
       </div>
-
-      {/* Notes textarea */}
-      <textarea
-        value={noteValue}
-        onChange={(e) => onChange?.(noteField, e.target.value)}
-        readOnly={readOnly}
-        placeholder={readOnly ? "—" : "Notes..."}
-        className="px-3 py-2 border rounded text-sm leading-relaxed resize-none h-20 bg-muted/40 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-      />
 
       {/* Screenshot */}
       {screenshotValue ? (
@@ -117,13 +113,12 @@ export function TimeframeCard({
         </div>
       ) : (
         !readOnly && (
-          // Focusable div so it can receive paste events
           <div
             tabIndex={0}
             onPaste={handlePaste}
             onFocus={() => setIsPasteTarget(true)}
             onBlur={() => setIsPasteTarget(false)}
-            className={`flex flex-col items-center justify-center gap-1 w-full aspect-video border border-dashed rounded text-xs transition-colors cursor-default select-none outline-none
+            className={`flex flex-col items-center justify-center gap-1 w-full aspect-video border border-dashed bg-muted/40 rounded text-xs transition-colors cursor-default select-none outline-none
               ${
                 isPasteTarget
                   ? "border-foreground text-foreground bg-muted/60 ring-1 ring-ring"

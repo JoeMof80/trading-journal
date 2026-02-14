@@ -1,0 +1,108 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { DraftAnalysis } from "@/types/types";
+
+type ReportAnalysis = {
+  id: string;
+  date: string;
+} & DraftAnalysis;
+
+const TIMEFRAME_FIELDS: {
+  label: string;
+  note: keyof DraftAnalysis;
+  screenshot: keyof DraftAnalysis;
+}[] = [
+  { label: "Weekly", note: "weekly", screenshot: "weeklyScreenshot" },
+  { label: "Daily", note: "daily", screenshot: "dailyScreenshot" },
+  { label: "4 Hour", note: "fourHr", screenshot: "fourHrScreenshot" },
+  { label: "1 Hour", note: "oneHr", screenshot: "oneHrScreenshot" },
+];
+
+function TimeframeSection({
+  label,
+  note,
+  screenshot,
+}: {
+  label: string;
+  note: string;
+  screenshot: string;
+}) {
+  const hasContent = note.trim() || screenshot;
+  if (!hasContent) return null;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </h3>
+      {screenshot && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={screenshot}
+          alt={`${label} chart`}
+          className="w-full rounded-md border object-contain max-h-90"
+        />
+      )}
+      {note.trim() && (
+        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function AnalysisReportDialog({
+  open,
+  onOpenChange,
+  pairName,
+  analysis,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pairName: string;
+  analysis: ReportAnalysis | null;
+}) {
+  if (!analysis) return null;
+
+  const sections = TIMEFRAME_FIELDS.map((tf) => ({
+    label: tf.label,
+    note: (analysis[tf.note] as string) ?? "",
+    screenshot: (analysis[tf.screenshot] as string) ?? "",
+  })).filter((s) => s.note.trim() || s.screenshot);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <span className="text-lg font-bold tracking-wider">{pairName}</span>
+            <span className="text-sm font-normal text-muted-foreground tabular-nums">
+              {analysis.date}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        {sections.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No analysis data for this entry.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-6 py-2">
+            {sections.map((section, i) => (
+              <div key={section.label}>
+                {i > 0 && <Separator className="mb-6" />}
+                <TimeframeSection {...section} />
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
