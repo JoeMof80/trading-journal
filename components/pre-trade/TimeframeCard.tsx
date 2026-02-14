@@ -69,14 +69,14 @@ export function TimeframeCard({
           onChange={(e) => onChange?.(noteField, e.target.value)}
           readOnly={readOnly}
           placeholder={readOnly ? "—" : "Notes..."}
-          className="w-full px-3 py-2 border rounded text-sm leading-relaxed resize-none h-20 bg-muted/40 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full px-3 py-2 border border-border/70 rounded text-sm leading-relaxed resize-none h-20 bg-muted/60 dark:bg-muted/30 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {/* Copy button — appears on hover or when there's content */}
         <Button
           size="icon"
           variant="ghost"
           className={`absolute bottom-1.5 right-1.5 h-5 w-5 transition-opacity
-            ${noteValue ? "opacity-40 hover:opacity-100" : "opacity-0 group-hover/note:opacity-30"}`}
+            ${noteValue ? "opacity-50 hover:opacity-100" : "opacity-0 group-hover/note:opacity-40"}`}
           onClick={handleCopy}
           disabled={!noteValue}
           title="Copy notes"
@@ -103,7 +103,7 @@ export function TimeframeCard({
             <Button
               size="icon"
               variant="secondary"
-              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
               onClick={clearScreenshot}
               title="Remove screenshot"
             >
@@ -122,7 +122,7 @@ export function TimeframeCard({
               ${
                 isPasteTarget
                   ? "border-foreground text-foreground bg-muted/60 ring-1 ring-ring"
-                  : "text-muted-foreground hover:border-foreground hover:text-foreground"
+                  : "text-muted-foreground/80 hover:border-foreground hover:text-foreground"
               }`}
           >
             <ImagePlus className="h-4 w-4" />

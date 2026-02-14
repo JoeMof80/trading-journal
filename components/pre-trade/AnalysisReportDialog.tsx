@@ -37,7 +37,7 @@ function TimeframeSection({
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+      <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/90">
         {label}
       </h3>
       {screenshot && (
@@ -49,7 +49,7 @@ function TimeframeSection({
         />
       )}
       {note.trim() && (
-        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+        <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
           {note}
         </p>
       )}
@@ -81,8 +81,8 @@ export function AnalysisReportDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <span className="text-lg font-bold tracking-wider">{pairName}</span>
-            <span className="text-sm font-normal text-muted-foreground tabular-nums">
+            <span className="text-lg font-bold tracking-wider text-foreground">{pairName}</span>
+            <span className="text-sm font-normal text-muted-foreground/80 tabular-nums">
               {analysis.date}
             </span>
           </DialogTitle>
