@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -5,34 +8,52 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 import { DraftAnalysis } from "@/types/types";
+import { getUrl } from "aws-amplify/storage";
 
-type ReportAnalysis = {
-  id: string;
-  date: string;
-} & DraftAnalysis;
+type ReportAnalysis = { id: string; date: string } & DraftAnalysis;
 
 const TIMEFRAME_FIELDS: {
   label: string;
   note: keyof DraftAnalysis;
   screenshot: keyof DraftAnalysis;
 }[] = [
-  { label: "Weekly", note: "weekly", screenshot: "weeklyScreenshot" },
-  { label: "Daily", note: "daily", screenshot: "dailyScreenshot" },
-  { label: "4 Hour", note: "fourHr", screenshot: "fourHrScreenshot" },
-  { label: "1 Hour", note: "oneHr", screenshot: "oneHrScreenshot" },
+  { label: "Weekly",  note: "weekly",  screenshot: "weeklyScreenshot"  },
+  { label: "Daily",   note: "daily",   screenshot: "dailyScreenshot"   },
+  { label: "4 Hour",  note: "fourHr",  screenshot: "fourHrScreenshot"  },
+  { label: "1 Hour",  note: "oneHr",   screenshot: "oneHrScreenshot"   },
 ];
+
+// Resolves an S3 key → signed URL. Returns raw value if it's already a
+// data URI (legacy base64) or empty string.
+async function resolveScreenshot(value: string): Promise<string> {
+  if (!value || value.startsWith("data:")) return value;
+  try {
+    const { url } = await getUrl({ path: value, options: { expiresIn: 3600 } });
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
 
 function TimeframeSection({
   label,
   note,
-  screenshot,
+  screenshotKey,
 }: {
   label: string;
   note: string;
-  screenshot: string;
+  screenshotKey: string;
 }) {
-  const hasContent = note.trim() || screenshot;
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!screenshotKey) { setResolvedUrl(null); return; }
+    resolveScreenshot(screenshotKey).then(setResolvedUrl);
+  }, [screenshotKey]);
+
+  const hasContent = note.trim() || screenshotKey;
   if (!hasContent) return null;
 
   return (
@@ -40,13 +61,21 @@ function TimeframeSection({
       <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/90">
         {label}
       </h3>
-      {screenshot && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={screenshot}
-          alt={`${label} chart`}
-          className="w-full rounded-md border object-contain max-h-90"
-        />
+      {screenshotKey && (
+        resolvedUrl
+          ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolvedUrl}
+              alt={`${label} chart`}
+              className="w-full rounded-md border object-contain max-h-90"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-full aspect-video bg-muted/30 rounded border text-xs text-muted-foreground gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          )
       )}
       {note.trim() && (
         <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
@@ -73,15 +102,15 @@ export function AnalysisReportDialog({
   const sections = TIMEFRAME_FIELDS.map((tf) => ({
     label: tf.label,
     note: (analysis[tf.note] as string) ?? "",
-    screenshot: (analysis[tf.screenshot] as string) ?? "",
-  })).filter((s) => s.note.trim() || s.screenshot);
+    screenshotKey: (analysis[tf.screenshot] as string) ?? "",
+  })).filter((s) => s.note.trim() || s.screenshotKey);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <span className="text-lg font-bold tracking-wider text-foreground">{pairName}</span>
+            <span className="text-lg font-bold tracking-wider">{pairName}</span>
             <span className="text-sm font-normal text-muted-foreground/80 tabular-nums">
               {analysis.date}
             </span>
