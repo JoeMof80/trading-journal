@@ -20,7 +20,7 @@ export default function PreTradeAnalysis() {
     saveStatus,
     deleting,
     pairFlags,
-    setPairFlag,
+    setPairFlags,
     reportState,
     closeReport,
     setDraftField,
@@ -29,19 +29,18 @@ export default function PreTradeAnalysis() {
     openReport,
   } = usePreTradeAnalysis();
 
-  const { cutoffHourUtc } = useTradingDaySettings();
-  // Single source of truth for "today" — trading-day aware, passed down to
-  // setDraftField and persistAnalysis so the upsert key is always consistent.
-  const today = getTradingDate(cutoffHourUtc);
-
+  // Build pairId → latest analysis date for "sort by date"
   const latestDates = useMemo(() => {
     const map: Record<string, string> = {};
     for (const pair of FOREX_PAIRS) {
       const list = analyses[pair.id];
-      if (list?.length) map[pair.id] = list[0].date; // descending — newest first
+      if (list?.length) map[pair.id] = list[0].date; // descending — newest is first
     }
     return map;
   }, [analyses]);
+
+  const { cutoffHourUtc } = useTradingDaySettings();
+  const today = getTradingDate(cutoffHourUtc);
 
   const {
     flagFilters,
@@ -67,6 +66,7 @@ export default function PreTradeAnalysis() {
 
       {grouped.map((group, gi) => (
         <div key={gi}>
+          {/* Category / flag subheader */}
           {group.heading && (
             <div className="flex items-center gap-3 mt-4 mb-1 px-1">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
@@ -115,7 +115,9 @@ export default function PreTradeAnalysis() {
                   deleting={deleting}
                   pairFlag={pairFlags[pair.id] ?? "none"}
                   isOpen={openPair === pair.id}
-                  onFlagChange={(c) => setPairFlag(pair.id, c)}
+                  onFlagChange={(c) =>
+                    setPairFlags((prev) => ({ ...prev, [pair.id]: c }))
+                  }
                   onDraftChange={(field, value) =>
                     setDraftField(pair.id, field, value, today)
                   }
