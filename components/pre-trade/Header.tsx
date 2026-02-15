@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LineChart, Moon, Sun } from "lucide-react";
+import { CandlestickChart, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "../ui/badge";
 
 const NAV_LINKS = [
   { label: "Dashboard", href: "/" },
@@ -13,7 +14,6 @@ const NAV_LINKS = [
   { label: "Trade Journal", href: "/journal" },
   { label: "Settings", href: "/settings" },
 ];
-
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -35,22 +35,19 @@ export function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 h-12 bg-background border-b border-border px-4 gap-6 flex items-center">
-        {/* <div className="container mx-auto p-4 flex items-center"> */}
-        {/* Logo / brand */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-12 bg-background border-b border-border px-4 flex items-center">
         <Link
           href="/"
-          className="flex items-center gap-2 text-foreground hover:text-foreground shrink-0"
+          className="flex items-center gap-2 text-foreground hover:text-foreground shrink-0 pr-5"
         >
-          <LineChart className="h-4 w-4 text-primary" />
-          <span className="text-sm font-bold tracking-wider uppercase">
-            TradeLog
+          <span className="mx-1">
+            <CandlestickChart className="h-4 w-4 text-primary" />
           </span>
+          <Badge className="text-xs font-bold tracking-wider uppercase">
+            TradeLog
+          </Badge>
         </Link>
-
         <Separator orientation="vertical" className="h-4" />
-
-        {/* Nav links */}
         <nav className="flex items-center gap-1">
           {NAV_LINKS.map(({ label, href }) => {
             const active = pathname === href;
@@ -70,14 +67,10 @@ export function Header() {
             );
           })}
         </nav>
-
-        {/* Theme toggle — pushed to the right */}
         <div className="ml-auto">
           <ThemeToggle />
         </div>
       </header>
-
-      {/* Spacer so page content clears the fixed header */}
       <div className="h-12" />
     </>
   );

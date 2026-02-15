@@ -30,7 +30,7 @@ export function RowFlagPicker({
           <FlagIcon
             className={`transition-colors ${current.iconClass}`}
             filled={flag !== "none"}
-            size={13}
+            size={16}
           />
         </div>
       </DropdownMenuTrigger>
