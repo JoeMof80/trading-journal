@@ -1,6 +1,6 @@
 import { Analysis } from "@/types/types";
 
-export const TIMEFRAMES = ["Weekly", "Daily", "1Hr", "4Hr"];
+export const TIMEFRAMES = ["Weekly", "Daily", "4H", "1H"];
 
 export const SUMMARY_FIELDS: { label: string; key: keyof Analysis }[] = [
   { label: "W", key: "weekly" },

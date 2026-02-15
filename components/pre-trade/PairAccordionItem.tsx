@@ -48,7 +48,7 @@ export function PairAccordionItem({
   const latestAnalysis = allAnalyses[allAnalyses.length - 1] ?? null;
 
   return (
-    <AccordionItem value={pair.id}>
+    <AccordionItem value={pair.id} className="overflow-hidden">
       <AccordionTrigger
         className="
           py-1 rounded-sm
@@ -57,10 +57,17 @@ export function PairAccordionItem({
           data-[state=open]:bg-muted/80
           transition-colors
           [&>svg:last-child]:hidden
+          [&>h3]:min-w-0
+          [&>h3]:overflow-hidden
         "
       >
-        <div className="flex w-full gap-4 items-center">
-          <div className="flex items-center w-32 gap-2 shrink-0">
+        {/*
+         * min-w-0 on the outer row is required — without it, flex children
+         * ignore their own min-w-0 and the row grows past the viewport.
+         */}
+        <div className="flex w-full gap-4 items-center min-w-0">
+          {/* Fixed width — never shrinks */}
+          <div className="flex items-center w-32 shrink-0 gap-2">
             <div onClick={(e) => e.stopPropagation()}>
               <RowFlagPicker flag={pairFlag} onChange={onFlagChange} />
             </div>
@@ -71,6 +78,12 @@ export function PairAccordionItem({
               {pair.name}
             </Badge>
           </div>
+
+          {/*
+           * isOpen: timeframe labels rendered as direct flex children — fine.
+           * !isOpen: AnalysisSummary renders its own flex-1 wrapper, so no
+           * extra div needed. The min-w-0 on the outer row is what constrains it.
+           */}
           {isOpen ? (
             TIMEFRAMES.map((tf) => (
               <div key={tf} className="flex flex-1 items-center min-w-0 ml-3">
@@ -86,6 +99,8 @@ export function PairAccordionItem({
               No analysis yet
             </span>
           )}
+
+          {/* Fixed width — never shrinks */}
           <div className="w-8 shrink-0 flex justify-center">
             <ChevronDown
               className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${

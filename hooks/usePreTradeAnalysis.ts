@@ -44,6 +44,13 @@ export function usePreTradeAnalysis() {
 
   const autosaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // Keep a ref to analyses so persistAnalysis always reads the latest value,
+  // avoiding the stale-closure bug where useCallback captures an old snapshot.
+  const analysesRef = useRef(analyses);
+  useEffect(() => {
+    analysesRef.current = analyses;
+  }, [analyses]);
+
   useEffect(() => {
     if (!client.models.PreTradeAnalysis) {
       console.warn("PreTradeAnalysis model not found. Run `npx ampx sandbox` to deploy.");
@@ -74,6 +81,7 @@ export function usePreTradeAnalysis() {
   const getDraft = (pairId: string): DraftAnalysis =>
     drafts[pairId] ?? { ...EMPTY_DRAFT };
 
+  // No dependency on `analyses` — reads via ref instead to avoid stale closure.
   const persistAnalysis = useCallback(
     async (pairId: string, draft: DraftAnalysis) => {
       if (!client.models.PreTradeAnalysis) return;
@@ -90,7 +98,8 @@ export function usePreTradeAnalysis() {
         oneHrScreenshot: draft.oneHrScreenshot || undefined,
       };
       try {
-        const existing = analyses[pairId]?.find((a) => a.date === today);
+        // Use the ref so we always get the latest analyses, not a stale closure
+        const existing = analysesRef.current[pairId]?.find((a) => a.date === today);
         const { errors } = existing
           ? await client.models.PreTradeAnalysis.update({ id: existing.id, ...payload })
           : await client.models.PreTradeAnalysis.create({ pairId, date: today, ...payload });
@@ -109,7 +118,7 @@ export function usePreTradeAnalysis() {
         setSaveStatus((prev) => ({ ...prev, [pairId]: "idle" }));
       }
     },
-    [analyses],
+    [], // stable — reads analyses via ref, not closure
   );
 
   const setDraftField = useCallback(

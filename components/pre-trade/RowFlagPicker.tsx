@@ -20,11 +20,6 @@ export function RowFlagPicker({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/*
-         * Must be a <div> not a <Button> here — this component is rendered
-         * inside AccordionTrigger which is already a <button>. Nesting
-         * <button> inside <button> is invalid HTML and causes hydration errors.
-         */}
         <div
           role="button"
           tabIndex={0}
@@ -44,7 +39,7 @@ export function RowFlagPicker({
         side="right"
         align="start"
         sideOffset={6}
-        alignOffset={-6}
+        alignOffset={-7}
         className="flex flex-row p-1"
       >
         {FLAG_COLORS.map((opt) => (

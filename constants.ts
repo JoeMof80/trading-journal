@@ -46,7 +46,7 @@ export const FOREX_PAIRS = [
   { id: "41", name: "WTI", category: "Futures" },
 ];
 
-export const TIMEFRAMES = ["Weekly", "Daily", "1Hr", "4Hr"];
+export const TIMEFRAMES = ["Weekly", "Daily", "4 Hour", "1 Hour"];
 
 export const SUMMARY_FIELDS: { label: string; key: keyof Analysis }[] = [
   { label: "W", key: "weekly" },
@@ -68,46 +68,46 @@ export const FLAG_OPTIONS: {
     iconClass: "text-muted-foreground/50",
   },
   {
-    value: "red",
-    rowBg: "bg-red-50/60 dark:bg-red-950/40",
+    value: "red", // FF5252
+    rowBg: "bg-[#FF5252]/10 dark:bg-[#FF5252]/20",
     label: "Red — bearish, avoid longs",
-    iconClass: "text-red-500",
+    iconClass: "text-[#FF5252]",
   },
   {
-    value: "orange",
-    rowBg: "bg-amber-50/60 dark:bg-amber-950/40",
+    value: "orange", // FBC12C
+    rowBg: "bg-[#FBC12C]/10 dark:bg-[#FBC12C]/20",
     label: "Orange — bearish lean, uncertain",
-    iconClass: "text-amber-400",
+    iconClass: "text-[#FBC12C]",
   },
   {
-    value: "green",
-    rowBg: "bg-green-50/60 dark:bg-green-950/40",
+    value: "green", // 81C784
+    rowBg: "bg-[#81C784]/10 dark:bg-[#81C784]/20",
     label: "Green — bullish, look for longs",
-    iconClass: "text-green-500",
+    iconClass: "text-[#81C784]",
   },
   {
-    value: "blue",
-    rowBg: "bg-blue-50/60 dark:bg-blue-950/40",
+    value: "blue", // 297AFF
+    rowBg: "bg-[#297AFF]/10 dark:bg-[#297AFF]/20",
     label: "Blue — active trade / prime setup",
-    iconClass: "text-blue-500",
+    iconClass: "text-[#297AFF]",
   },
   {
-    value: "cyan",
-    rowBg: "bg-cyan-50/60 dark:bg-cyan-950/40",
+    value: "cyan", // 06E5FF
+    rowBg: "bg-[#06E5FF]/10 dark:bg-[#06E5FF]/20",
     label: "Cyan — neutral, watching",
-    iconClass: "text-cyan-500",
+    iconClass: "text-[#06E5FF]",
   },
   {
-    value: "pink",
-    rowBg: "bg-pink-50/60 dark:bg-pink-950/40",
+    value: "pink", // F48FB1
+    rowBg: "bg-[#F48FB1]/10 dark:bg-[#F48FB1]/20",
     label: "Pink — neutral, watching",
-    iconClass: "text-pink-500",
+    iconClass: "text-[#F48FB1]",
   },
   {
-    value: "purple",
-    rowBg: "bg-purple-50/60 dark:bg-purple-950/40",
+    value: "purple", // BA68C8
+    rowBg: "bg-[#BA68C8]/10 dark:bg-[#BA68C8]/20",
     label: "Purple — macro / news watch",
-    iconClass: "text-purple-500",
+    iconClass: "text-[#BA68C8]",
   },
 ];
 
