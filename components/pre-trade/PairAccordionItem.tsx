@@ -45,7 +45,7 @@ export function PairAccordionItem({
 }) {
   const today = new Date().toISOString().split("T")[0];
   const pairAnalyses = allAnalyses.filter((a) => a.date !== today);
-  const latestAnalysis = allAnalyses[allAnalyses.length - 1] ?? null;
+  const latestAnalysis = allAnalyses[0] ?? null; // descending order — newest is first
 
   return (
     <AccordionItem value={pair.id} className="overflow-hidden">
