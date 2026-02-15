@@ -1,4 +1,4 @@
-import { TIMEFRAMES } from "@/constants";
+import { TIMEFRAMES } from "@/lib/constants";
 
 export function TradeAnalysisHeader() {
   return (

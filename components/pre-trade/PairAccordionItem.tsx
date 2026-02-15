@@ -4,7 +4,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
-import { getFlagOption, TIMEFRAMES } from "@/constants";
+import { getFlagOption, TIMEFRAMES } from "@/lib/constants";
 import { Analysis, DraftAnalysis, FlagColor, SaveStatus } from "@/types/types";
 import { AnalysisSummary } from "./AnalysisSummary";
 import { RowFlagPicker } from "./RowFlagPicker";

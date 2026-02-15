@@ -1,12 +1,12 @@
 import { FlagColor } from "@/types/types";
 import { FlagIcon } from "./FlagIcon";
-import { FLAG_COLORS, getFlagOption } from "@/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { FLAG_COLORS, getFlagOption } from "@/lib/constants";
 
 export function RowFlagPicker({
   flag,

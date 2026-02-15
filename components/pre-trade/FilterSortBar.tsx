@@ -1,5 +1,4 @@
 import { FlagColor } from "@/types/types";
-import { FLAG_OPTIONS } from "@/constants";
 import { FlagIcon } from "./FlagIcon";
 import { SortKey } from "../../hooks/useFilterSort";
 import { X } from "lucide-react";
@@ -13,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { Separator } from "../ui/separator";
+import { FLAG_OPTIONS } from "@/lib/constants";
 
 const FLAG_FILTER_OPTIONS = FLAG_OPTIONS; // includes "none"
 

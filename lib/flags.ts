@@ -1,4 +1,4 @@
-import { FlagColor } from "@/types/types";
+import { Analysis, FlagColor } from "../types/types";
 
 export const FLAG_OPTIONS: {
   value: FlagColor;
@@ -6,14 +6,54 @@ export const FLAG_OPTIONS: {
   label: string;
   iconClass: string;
 }[] = [
-  { value: "none",   rowBg: "",                                  label: "None — unreviewed",            iconClass: "text-muted-foreground/50" },
-  { value: "red",    rowBg: "bg-red-50/60 dark:bg-red-950/40",   label: "Red — bearish, avoid longs",   iconClass: "text-red-500"             },
-  { value: "orange", rowBg: "bg-amber-50/60 dark:bg-amber-950/40", label: "Orange — bearish lean",      iconClass: "text-amber-400"           },
-  { value: "green",  rowBg: "bg-green-50/60 dark:bg-green-950/40", label: "Green — bullish, look for longs", iconClass: "text-green-500"      },
-  { value: "blue",   rowBg: "bg-blue-50/60 dark:bg-blue-950/40", label: "Blue — active trade / prime setup", iconClass: "text-blue-500"      },
-  { value: "cyan",   rowBg: "bg-cyan-50/60 dark:bg-cyan-950/40", label: "Cyan — neutral, watching",     iconClass: "text-cyan-500"            },
-  { value: "pink",   rowBg: "bg-pink-50/60 dark:bg-pink-950/40", label: "Pink — interest, watching",    iconClass: "text-pink-500"            },
-  { value: "purple", rowBg: "bg-purple-50/60 dark:bg-purple-950/40", label: "Purple — macro / news watch", iconClass: "text-purple-500"     },
+  {
+    value: "none",
+    rowBg: "",
+    label: "None — unreviewed",
+    iconClass: "text-muted-foreground/50",
+  },
+  {
+    value: "red", // FF5252
+    rowBg: "bg-[#FF5252]/10 dark:bg-[#FF5252]/20",
+    label: "Red — bearish, avoid longs",
+    iconClass: "text-[#FF5252]",
+  },
+  {
+    value: "orange", // FBC12C
+    rowBg: "bg-[#FBC12C]/10 dark:bg-[#FBC12C]/20",
+    label: "Orange — bearish lean, uncertain",
+    iconClass: "text-[#FBC12C]",
+  },
+  {
+    value: "green", // 81C784
+    rowBg: "bg-[#81C784]/10 dark:bg-[#81C784]/20",
+    label: "Green — bullish, look for longs",
+    iconClass: "text-[#81C784]",
+  },
+  {
+    value: "blue", // 297AFF
+    rowBg: "bg-[#297AFF]/10 dark:bg-[#297AFF]/20",
+    label: "Blue — active trade / prime setup",
+    iconClass: "text-[#297AFF]",
+  },
+  {
+    value: "cyan", // 06E5FF
+    rowBg: "bg-[#06E5FF]/10 dark:bg-[#06E5FF]/20",
+    label: "Cyan — neutral, watching",
+    iconClass: "text-[#06E5FF]",
+  },
+  {
+    value: "pink", // F48FB1
+    rowBg: "bg-[#F48FB1]/10 dark:bg-[#F48FB1]/20",
+    label: "Pink — neutral, watching",
+    iconClass: "text-[#F48FB1]",
+  },
+  {
+    value: "purple", // BA68C8
+    rowBg: "bg-[#BA68C8]/10 dark:bg-[#BA68C8]/20",
+    label: "Purple — macro / news watch",
+    iconClass: "text-[#BA68C8]",
+  },
 ];
 
 export const FLAG_COLORS = FLAG_OPTIONS.filter((o) => o.value !== "none");

@@ -1,4 +1,4 @@
-import { TIMEFRAMES } from "@/constants";
+import { TIMEFRAMES } from "@/lib/constants";
 import { TimeframeCard } from "./TimeframeCard";
 import { DraftAnalysis } from "@/types/types";
 import {

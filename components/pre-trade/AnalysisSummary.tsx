@@ -1,4 +1,4 @@
-import { SUMMARY_FIELDS } from "@/constants";
+import { SUMMARY_FIELDS } from "@/lib/constants";
 import { Analysis } from "@/types/types";
 import {
   Tooltip,

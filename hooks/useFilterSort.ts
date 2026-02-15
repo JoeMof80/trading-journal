@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { FOREX_PAIRS } from "@/constants";
+import { FOREX_PAIRS } from "@/lib/constants";
 import { FlagColor } from "@/types/types";
 import { getTradingDate, getTradingDateDaysAgo } from "@/lib/tradingDay";
 
@@ -7,7 +7,16 @@ export type SortKey = "symbol" | "category" | "date" | "flag";
 
 type Pair = (typeof FOREX_PAIRS)[number];
 
-const FLAG_ORDER: FlagColor[] = ["red", "orange", "green", "blue", "cyan", "pink", "purple", "none"];
+const FLAG_ORDER: FlagColor[] = [
+  "red",
+  "orange",
+  "green",
+  "blue",
+  "cyan",
+  "pink",
+  "purple",
+  "none",
+];
 
 export function useFilterSort(
   pairFlags: Record<string, FlagColor>,
@@ -28,7 +37,9 @@ export function useFilterSort(
   // 1. Filter
   const filtered: Pair[] = useMemo(() => {
     if (flagFilters.length === 0) return FOREX_PAIRS;
-    return FOREX_PAIRS.filter((p) => flagFilters.includes(pairFlags[p.id] ?? "none"));
+    return FOREX_PAIRS.filter((p) =>
+      flagFilters.includes(pairFlags[p.id] ?? "none"),
+    );
   }, [flagFilters, pairFlags]);
 
   // 2. Sort
@@ -87,17 +98,24 @@ export function useFilterSort(
 
     if (sortKey === "date") {
       // All date comparisons use the trading day boundary, not midnight
-      const todayTd   = getTradingDate(cutoffHourUtc);
-      const day1ago   = getTradingDateDaysAgo(1,  cutoffHourUtc);
-      const day2ago   = getTradingDateDaysAgo(2,  cutoffHourUtc);
-      const day3ago   = getTradingDateDaysAgo(3,  cutoffHourUtc);
-      const day4ago   = getTradingDateDaysAgo(4,  cutoffHourUtc);
-      const day5ago   = getTradingDateDaysAgo(5,  cutoffHourUtc);
-      const day6ago   = getTradingDateDaysAgo(6,  cutoffHourUtc);
-      const day30ago  = getTradingDateDaysAgo(30, cutoffHourUtc);
+      const todayTd = getTradingDate(cutoffHourUtc);
+      const day1ago = getTradingDateDaysAgo(1, cutoffHourUtc);
+      const day2ago = getTradingDateDaysAgo(2, cutoffHourUtc);
+      const day3ago = getTradingDateDaysAgo(3, cutoffHourUtc);
+      const day4ago = getTradingDateDaysAgo(4, cutoffHourUtc);
+      const day5ago = getTradingDateDaysAgo(5, cutoffHourUtc);
+      const day6ago = getTradingDateDaysAgo(6, cutoffHourUtc);
+      const day30ago = getTradingDateDaysAgo(30, cutoffHourUtc);
 
       // Each exact trading date in "this week" gets its own subheader
-      const thisWeekDates = [day1ago, day2ago, day3ago, day4ago, day5ago, day6ago];
+      const thisWeekDates = [
+        day1ago,
+        day2ago,
+        day3ago,
+        day4ago,
+        day5ago,
+        day6ago,
+      ];
 
       const buckets: { heading: string; test: (d: string) => boolean }[] = [
         {
@@ -125,7 +143,9 @@ export function useFilterSort(
 
       const groups: { heading: string | null; pairs: Pair[] }[] = [];
       for (const bucket of buckets) {
-        const pairs = sorted.filter((p) => bucket.test(latestDates[p.id] ?? ""));
+        const pairs = sorted.filter((p) =>
+          bucket.test(latestDates[p.id] ?? ""),
+        );
         if (pairs.length > 0) groups.push({ heading: bucket.heading, pairs });
       }
       return groups;
@@ -148,13 +168,13 @@ export function useFilterSort(
 
 function flagHeading(flag: FlagColor): string {
   const labels: Record<FlagColor, string> = {
-    none:   "Unflagged",
-    red:    "Red — Bearish",
+    none: "Unflagged",
+    red: "Red — Bearish",
     orange: "Orange — Bearish lean",
-    green:  "Green — Bullish",
-    blue:   "Blue — Active trade",
-    cyan:   "Cyan — Watching",
-    pink:   "Pink — Watching",
+    green: "Green — Bullish",
+    blue: "Blue — Active trade",
+    cyan: "Cyan — Watching",
+    pink: "Pink — Watching",
     purple: "Purple — Macro / News",
   };
   return labels[flag];

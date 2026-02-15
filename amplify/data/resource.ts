@@ -29,6 +29,15 @@ const schema = a.schema({
       oneHrScreenshot: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
+
+  // One record per pair — stores persistent settings like flag colour.
+  // Upserted on flag change, never deleted.
+  PairSettings: a
+    .model({
+      pairId: a.string().required(),
+      flag: a.string(), // FlagColor value
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

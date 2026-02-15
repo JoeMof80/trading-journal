@@ -35,7 +35,7 @@ export function usePreTradeAnalysis() {
   const [drafts, setDrafts] = useState<Record<string, DraftAnalysis>>({});
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
-  const [pairFlags, setPairFlags] = useState<Record<string, FlagColor>>({});
+  const [pairFlags, setPairFlagsState] = useState<Record<string, FlagColor>>({});
   const [reportState, setReportState] = useState<ReportState>({
     open: false,
     pairName: "",
@@ -44,16 +44,19 @@ export function usePreTradeAnalysis() {
 
   const autosaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // Keep a ref to analyses so persistAnalysis always reads the latest value,
-  // avoiding the stale-closure bug where useCallback captures an old snapshot.
+  // Ref so persistAnalysis always reads the latest analyses without
+  // being re-created on every render (avoids stale closure on update path).
   const analysesRef = useRef(analyses);
-  useEffect(() => {
-    analysesRef.current = analyses;
-  }, [analyses]);
+  useEffect(() => { analysesRef.current = analyses; }, [analyses]);
+
+  // pairSettingsId: pairId → Amplify record id, needed for upsert on flag change
+  const pairSettingsIdRef = useRef<Record<string, string>>({});
+
+  // ── Subscriptions ────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!client.models.PreTradeAnalysis) {
-      console.warn("PreTradeAnalysis model not found. Run `npx ampx sandbox` to deploy.");
+      console.warn("PreTradeAnalysis model not found. Run `npx ampx sandbox`.");
       return;
     }
     const sub = client.models.PreTradeAnalysis.observeQuery().subscribe({
@@ -70,7 +73,7 @@ export function usePreTradeAnalysis() {
         }
         setAnalyses(grouped);
       },
-      error: (err) => console.error("Subscription error:", err),
+      error: (err) => console.error("Analysis subscription error:", err),
     });
     return () => {
       sub.unsubscribe();
@@ -78,27 +81,67 @@ export function usePreTradeAnalysis() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!client.models.PairSettings) {
+      console.warn("PairSettings model not found. Run `npx ampx sandbox`.");
+      return;
+    }
+    const sub = client.models.PairSettings.observeQuery().subscribe({
+      next: ({ items }) => {
+        const flags: Record<string, FlagColor> = {};
+        for (const item of items) {
+          flags[item.pairId] = (item.flag ?? "none") as FlagColor;
+          pairSettingsIdRef.current[item.pairId] = item.id;
+        }
+        setPairFlagsState(flags);
+      },
+      error: (err) => console.error("PairSettings subscription error:", err),
+    });
+    return () => sub.unsubscribe();
+  }, []);
+
+  // ── Flag persistence ─────────────────────────────────────────────────────
+
+  const setPairFlag = useCallback(async (pairId: string, flag: FlagColor) => {
+    // Optimistic update first — UI responds instantly
+    setPairFlagsState((prev) => ({ ...prev, [pairId]: flag }));
+
+    if (!client.models.PairSettings) return;
+    const existingId = pairSettingsIdRef.current[pairId];
+    try {
+      if (existingId) {
+        await client.models.PairSettings.update({ id: existingId, flag });
+      } else {
+        const { data: created } = await client.models.PairSettings.create({ pairId, flag });
+        if (created) pairSettingsIdRef.current[pairId] = created.id;
+      }
+    } catch (err) {
+      console.error("Flag save failed:", err);
+    }
+  }, []);
+
+  // ── Analysis persistence ─────────────────────────────────────────────────
+
   const getDraft = (pairId: string): DraftAnalysis =>
     drafts[pairId] ?? { ...EMPTY_DRAFT };
 
-  // No dependency on `analyses` — reads via ref instead to avoid stale closure.
+  // `today` is passed in from the component so it uses the trading-day-aware
+  // date (getTradingDate), keeping the upsert key consistent with what's stored.
   const persistAnalysis = useCallback(
-    async (pairId: string, draft: DraftAnalysis) => {
+    async (pairId: string, draft: DraftAnalysis, today: string) => {
       if (!client.models.PreTradeAnalysis) return;
       setSaveStatus((prev) => ({ ...prev, [pairId]: "saving" }));
-      const today = new Date().toISOString().split("T")[0];
       const payload = {
-        weekly: draft.weekly || undefined,
-        weeklyScreenshot: draft.weeklyScreenshot || undefined,
-        daily: draft.daily || undefined,
-        dailyScreenshot: draft.dailyScreenshot || undefined,
-        fourHr: draft.fourHr || undefined,
-        fourHrScreenshot: draft.fourHrScreenshot || undefined,
-        oneHr: draft.oneHr || undefined,
-        oneHrScreenshot: draft.oneHrScreenshot || undefined,
+        weekly:            draft.weekly            || undefined,
+        weeklyScreenshot:  draft.weeklyScreenshot  || undefined,
+        daily:             draft.daily             || undefined,
+        dailyScreenshot:   draft.dailyScreenshot   || undefined,
+        fourHr:            draft.fourHr            || undefined,
+        fourHrScreenshot:  draft.fourHrScreenshot  || undefined,
+        oneHr:             draft.oneHr             || undefined,
+        oneHrScreenshot:   draft.oneHrScreenshot   || undefined,
       };
       try {
-        // Use the ref so we always get the latest analyses, not a stale closure
         const existing = analysesRef.current[pairId]?.find((a) => a.date === today);
         const { errors } = existing
           ? await client.models.PreTradeAnalysis.update({ id: existing.id, ...payload })
@@ -118,17 +161,17 @@ export function usePreTradeAnalysis() {
         setSaveStatus((prev) => ({ ...prev, [pairId]: "idle" }));
       }
     },
-    [], // stable — reads analyses via ref, not closure
+    [],
   );
 
   const setDraftField = useCallback(
-    (pairId: string, field: keyof DraftAnalysis, value: string) => {
+    (pairId: string, field: keyof DraftAnalysis, value: string, today: string) => {
       setDrafts((prev) => {
         const updated = { ...(prev[pairId] ?? { ...EMPTY_DRAFT }), [field]: value };
         clearTimeout(autosaveTimers.current[pairId]);
         setSaveStatus((s) => ({ ...s, [pairId]: "pending" }));
         autosaveTimers.current[pairId] = setTimeout(() => {
-          persistAnalysis(pairId, updated);
+          persistAnalysis(pairId, updated, today);
         }, AUTOSAVE_DELAY_MS);
         return { ...prev, [pairId]: updated };
       });
@@ -154,6 +197,8 @@ export function usePreTradeAnalysis() {
     }
   };
 
+  // ── Report dialog ────────────────────────────────────────────────────────
+
   const openReport = (pairName: string, analysis: Analysis | DraftAnalysis, date: string) => {
     setReportState({
       open: true,
@@ -174,7 +219,7 @@ export function usePreTradeAnalysis() {
     saveStatus,
     deleting,
     pairFlags,
-    setPairFlags,
+    setPairFlag,       // replaces setPairFlags — persists to Amplify
     reportState,
     closeReport,
     setDraftField,
