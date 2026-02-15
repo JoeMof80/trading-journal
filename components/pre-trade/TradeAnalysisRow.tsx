@@ -1,4 +1,5 @@
 import { TIMEFRAMES } from "@/lib/constants";
+import { getTradingDate } from "@/lib/tradingDay";
 import { TimeframeCard } from "./TimeframeCard";
 import { DraftAnalysis } from "@/types/types";
 import {
@@ -10,6 +11,42 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Ellipsis, FileText, Loader2, Trash2 } from "lucide-react";
+
+import { useTradingDaySettings } from "../../hooks/useTradingDaySettings";
+
+// Shows the trading date with a contextual hint when the calendar date and
+// trading date differ (i.e. between cutoff hour and midnight).
+// e.g.  "2025-02-16"          — normal, no hint needed
+//       "2025-02-16 · since 22:00 UTC"  — between 10pm and midnight
+function DateLabel({ date, isDraft }: { date: string; isDraft: boolean }) {
+  const { cutoffHourUtc } = useTradingDaySettings();
+
+  // Only the draft row ever needs the hint — historical rows have a fixed date.
+  const showHint =
+    isDraft &&
+    (() => {
+      const now = new Date();
+      const utcHour = now.getUTCHours();
+      const calendarDate = now.toISOString().split("T")[0];
+      const tradingDate = getTradingDate(cutoffHourUtc);
+      // Hint is relevant when we're past the cutoff but before midnight —
+      // i.e. the trading date is already tomorrow's calendar date.
+      return utcHour >= cutoffHourUtc && tradingDate !== calendarDate;
+    })();
+
+  return (
+    <div className="ml-10 flex flex-col gap-0.5">
+      <p className="text-xs font-medium text-foreground/70 tabular-nums">
+        {date}
+      </p>
+      {showHint && (
+        <p className="text-[10px] text-muted-foreground/50 tabular-nums">
+          since {String(cutoffHourUtc).padStart(2, "0")}:00 UTC
+        </p>
+      )}
+    </div>
+  );
+}
 
 const TF_FIELDS: Array<{
   note: "weekly" | "daily" | "fourHr" | "oneHr";
@@ -47,9 +84,7 @@ export function TradeAnalysisRow({
   return (
     <div className="flex w-full gap-4 items-start border-t border-border/60 py-4">
       <div className="w-32 shrink-0 flex flex-col gap-1 pt-3">
-        <p className="ml-10 text-xs font-medium text-foreground/70 tabular-nums">
-          {date}
-        </p>
+        <DateLabel date={date} isDraft={!readOnly} />
         {saveStatus && saveStatus !== "idle" && (
           <span className="text-[10px] text-muted-foreground/80 flex items-center gap-0.5">
             {saveStatus === "saving" && (
