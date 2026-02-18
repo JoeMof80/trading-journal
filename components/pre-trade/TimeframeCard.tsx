@@ -1,31 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Check, Copy, ImagePlus, Loader2, X } from "lucide-react";
 import { DraftAnalysis } from "@/types/types";
 import { uploadData, getUrl, remove } from "aws-amplify/storage";
+import { SentimentPicker } from "./SentimentPicker";
+import { Sentiment } from "@/types/types";
+import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
 
-// Guard: storage may not be configured until after `npx ampx sandbox` redeploys
-// with the new storage resource. Falls back gracefully if not available.
-function isStorageConfigured(): boolean {
-  try {
-    // amplify_outputs.json will have a "storage" key once deployed
-    return typeof window !== "undefined";
-  } catch {
-    return false;
-  }
-}
-
-// S3 key format: screenshots/{pairId}/{field}/{uuid}.{ext}
-// The UUID avoids collisions when replacing a screenshot.
 function makeS3Key(screenshotField: string, mimeType: string): string {
   const ext = mimeType.split("/")[1]?.replace("jpeg", "jpg") ?? "png";
   const uuid = crypto.randomUUID();
   return `screenshots/${screenshotField}/${uuid}.${ext}`;
 }
 
-// Returns a signed URL good for 1 hour. Amplify caches these internally.
 async function getSignedUrl(s3Key: string): Promise<string> {
   const { url } = await getUrl({
     path: s3Key,
@@ -38,6 +27,7 @@ export function TimeframeCard({
   label,
   noteField,
   screenshotField,
+  sentimentField,
   values,
   onChange,
   readOnly,
@@ -49,6 +39,11 @@ export function TimeframeCard({
     | "dailyScreenshot"
     | "fourHrScreenshot"
     | "oneHrScreenshot";
+  sentimentField:
+    | "weeklySentiment"
+    | "dailySentiment"
+    | "fourHrSentiment"
+    | "oneHrSentiment";
   values: DraftAnalysis;
   onChange?: (field: keyof DraftAnalysis, value: string) => void;
   readOnly: boolean;
@@ -59,13 +54,12 @@ export function TimeframeCard({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
 
   const noteValue = values[noteField];
-  const screenshotValue = values[screenshotField]; // S3 key or empty string
+  const screenshotValue = values[screenshotField];
+  const sentiment: Sentiment = values[sentimentField] ?? "none";
 
-  // Resolve signed URL when we have an S3 key and haven't fetched it yet
   if (screenshotValue && !signedUrl && !screenshotValue.startsWith("data:")) {
     getSignedUrl(screenshotValue).then(setSignedUrl).catch(console.error);
   }
-  // Clear cached URL if key changes
   if (!screenshotValue && signedUrl) setSignedUrl(null);
 
   const handleCopy = () => {
@@ -78,21 +72,16 @@ export function TimeframeCard({
   const uploadFile = async (blob: Blob, mimeType: string) => {
     setUploading(true);
     try {
-      // Delete old S3 object if replacing
       if (screenshotValue && !screenshotValue.startsWith("data:")) {
         await remove({ path: screenshotValue }).catch(() => {});
       }
-
       const key = makeS3Key(screenshotField, mimeType);
       await uploadData({
         path: key,
         data: blob,
         options: { contentType: mimeType },
       }).result;
-
-      // Store the S3 key in DraftAnalysis — not the URL (URLs expire)
       onChange?.(screenshotField, key);
-      // Immediately resolve a signed URL for display
       const url = await getSignedUrl(key);
       setSignedUrl(url);
     } catch (err) {
@@ -119,32 +108,51 @@ export function TimeframeCard({
     setSignedUrl(null);
   };
 
-  // Display URL: prefer resolved signed URL, fall back to legacy base64
-  const displaySrc = signedUrl ?? (screenshotValue?.startsWith("data:") ? screenshotValue : null);
+  const displaySrc =
+    signedUrl ??
+    (screenshotValue?.startsWith("data:") ? screenshotValue : null);
 
   return (
     <div className="flex flex-col flex-1 gap-1.5 min-w-0">
-      {/* Textarea */}
       <div className="relative group/note">
         <textarea
           value={noteValue}
           onChange={(e) => onChange?.(noteField, e.target.value)}
           readOnly={readOnly}
           placeholder={readOnly ? "—" : "Notes..."}
-          className="w-full px-3 py-2 border border-border/70 rounded text-sm leading-relaxed resize-none h-20 bg-muted/60 dark:bg-muted/30 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full pl-3 pr-7 py-2 border border-border/70 rounded text-sm leading-relaxed resize-none h-20 bg-muted/60 dark:bg-muted/30 placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
         />
-        <Button
-          size="icon"
-          variant="ghost"
-          className={`absolute bottom-1.5 right-1.5 h-5 w-5 transition-opacity
+
+        {/* Sentiment picker — top-right */}
+        <div className="absolute top-1.5 right-1.5">
+          <SentimentPicker
+            sentiment={sentiment}
+            onChange={(s) => onChange?.(sentimentField, s)}
+          />
+        </div>
+
+        {/* Copy button — bottom-right */}
+        <div className="absolute bottom-1.5 right-1.5">
+          <div
+            className={`rounded-sm bg-background/80 transition-opacity
             ${noteValue ? "opacity-50 hover:opacity-100" : "opacity-0 group-hover/note:opacity-40"}`}
-          onClick={handleCopy}
-          disabled={!noteValue}
-          title="Copy notes"
-          tabIndex={-1}
-        >
-          {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-        </Button>
+          >
+            <button
+              type="button"
+              onClick={handleCopy}
+              disabled={!noteValue}
+              title="Copy notes"
+              tabIndex={-1}
+              className="flex items-center justify-center h-6 w-6 rounded-sm hover:bg-accent cursor-pointer transition-colors"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Screenshot */}
@@ -180,11 +188,12 @@ export function TimeframeCard({
             onPaste={handlePaste}
             onFocus={() => setIsPasteTarget(true)}
             onBlur={() => setIsPasteTarget(false)}
-            className={`flex flex-col items-center justify-center gap-1 w-full aspect-video border border-dashed bg-muted/40 rounded text-xs transition-colors cursor-default select-none outline-none
-              ${isPasteTarget
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 w-full aspect-video border border-dashed bg-muted/40 rounded text-xs transition-colors cursor-default select-none outline-none",
+              isPasteTarget
                 ? "border-foreground text-foreground bg-muted/60 ring-1 ring-ring"
-                : "text-muted-foreground/80 hover:border-foreground hover:text-foreground"
-              }`}
+                : "text-muted-foreground/80 hover:border-foreground hover:text-foreground",
+            )}
           >
             <ImagePlus className="h-4 w-4" />
             <span>

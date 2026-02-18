@@ -1,5 +1,4 @@
 import { TIMEFRAMES } from "@/lib/constants";
-import { getTradingDate } from "@/lib/tradingDay";
 import { TimeframeCard } from "./TimeframeCard";
 import { DraftAnalysis } from "@/types/types";
 import {
@@ -11,15 +10,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Ellipsis, FileText, Loader2, Trash2 } from "lucide-react";
-
 import { useTradingDaySettings } from "../../hooks/useTradingDaySettings";
+import { getTradingDate } from "@/lib/tradingDay";
 
 // Shows the trading date with a contextual hint when the calendar date and
 // trading date differ (i.e. between cutoff hour and midnight).
-// e.g.  "2025-02-16"          — normal, no hint needed
-//       "2025-02-16 · since 22:00 UTC"  — between 10pm and midnight
-function DateLabel({ date, isDraft }: { date: string; isDraft: boolean }) {
-  const { cutoffHourUtc } = useTradingDaySettings();
+function TimestampLabel({
+  timestamp,
+  isDraft,
+  cutoffHourUtc,
+}: {
+  timestamp: string;
+  isDraft: boolean;
+  cutoffHourUtc?: number;
+}) {
+  const settings = useTradingDaySettings();
+  const actualCutoff = cutoffHourUtc ?? settings.cutoffHourUtc;
 
   // Only the draft row ever needs the hint — historical rows have a fixed date.
   const showHint =
@@ -28,22 +34,29 @@ function DateLabel({ date, isDraft }: { date: string; isDraft: boolean }) {
       const now = new Date();
       const utcHour = now.getUTCHours();
       const calendarDate = now.toISOString().split("T")[0];
-      const tradingDate = getTradingDate(cutoffHourUtc);
+      const tradingDate = getTradingDate(actualCutoff);
       // Hint is relevant when we're past the cutoff but before midnight —
       // i.e. the trading date is already tomorrow's calendar date.
-      return utcHour >= cutoffHourUtc && tradingDate !== calendarDate;
+      return utcHour >= actualCutoff && tradingDate !== calendarDate;
     })();
+
+  const dt = new Date(timestamp);
+  const dateStr = dt.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+  const timeStr = dt
+    .toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      hour12: false,
+    })
+    .replace(":00", ""); // Remove :00 since we only need the hour
 
   return (
     <div className="ml-10 flex flex-col gap-0.5">
       <p className="text-xs font-medium text-foreground/70 tabular-nums">
-        {date}
+        {dateStr} {timeStr}
       </p>
-      {showHint && (
-        <p className="text-[10px] text-muted-foreground/50 tabular-nums">
-          since {String(cutoffHourUtc).padStart(2, "0")}:00 UTC
-        </p>
-      )}
     </div>
   );
 }
@@ -55,15 +68,28 @@ const TF_FIELDS: Array<{
     | "dailyScreenshot"
     | "fourHrScreenshot"
     | "oneHrScreenshot";
+  sentiment:
+    | "weeklySentiment"
+    | "dailySentiment"
+    | "fourHrSentiment"
+    | "oneHrSentiment";
 }> = [
-  { note: "weekly", screenshot: "weeklyScreenshot" },
-  { note: "daily", screenshot: "dailyScreenshot" },
-  { note: "fourHr", screenshot: "fourHrScreenshot" },
-  { note: "oneHr", screenshot: "oneHrScreenshot" },
+  {
+    note: "weekly",
+    screenshot: "weeklyScreenshot",
+    sentiment: "weeklySentiment",
+  },
+  { note: "daily", screenshot: "dailyScreenshot", sentiment: "dailySentiment" },
+  {
+    note: "fourHr",
+    screenshot: "fourHrScreenshot",
+    sentiment: "fourHrSentiment",
+  },
+  { note: "oneHr", screenshot: "oneHrScreenshot", sentiment: "oneHrSentiment" },
 ];
 
 export function TradeAnalysisRow({
-  date,
+  timestamp,
   values,
   onChange,
   readOnly = false,
@@ -71,8 +97,9 @@ export function TradeAnalysisRow({
   onDelete,
   isDeleting = false,
   saveStatus,
+  cutoffHourUtc,
 }: {
-  date: string;
+  timestamp: string;
   values: DraftAnalysis;
   onChange?: (field: keyof DraftAnalysis, value: string) => void;
   readOnly?: boolean;
@@ -80,11 +107,16 @@ export function TradeAnalysisRow({
   onDelete?: () => void;
   isDeleting?: boolean;
   saveStatus?: "idle" | "pending" | "saving" | "saved";
+  cutoffHourUtc?: number;
 }) {
   return (
     <div className="flex w-full gap-4 items-start border-t border-border/60 py-4">
       <div className="w-32 shrink-0 flex flex-col gap-1 pt-3">
-        <DateLabel date={date} isDraft={!readOnly} />
+        <TimestampLabel
+          timestamp={timestamp}
+          isDraft={!readOnly}
+          cutoffHourUtc={cutoffHourUtc}
+        />
         {saveStatus && saveStatus !== "idle" && (
           <span className="text-[10px] text-muted-foreground/80 flex items-center gap-0.5">
             {saveStatus === "saving" && (
@@ -100,13 +132,14 @@ export function TradeAnalysisRow({
       </div>
 
       {TIMEFRAMES.map((tf, i) => {
-        const { note, screenshot } = TF_FIELDS[i];
+        const { note, screenshot, sentiment } = TF_FIELDS[i];
         return (
           <TimeframeCard
             key={tf}
             label={tf}
             noteField={note}
             screenshotField={screenshot}
+            sentimentField={sentiment}
             values={values}
             onChange={onChange}
             readOnly={readOnly}

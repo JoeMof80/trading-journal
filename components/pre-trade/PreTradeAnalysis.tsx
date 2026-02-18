@@ -20,21 +20,23 @@ export default function PreTradeAnalysis() {
     saveStatus,
     deleting,
     pairFlags,
-    setPairFlags,
+    setPairFlag,
     reportState,
     closeReport,
     setDraftField,
     clearDraft,
     deleteAnalysis,
+    updateHistoricalAnalysis,
     openReport,
+    currentHourKey,
   } = usePreTradeAnalysis();
 
-  // Build pairId → latest analysis date for "sort by date"
+  // Build pairId → latest analysis timestamp for "sort by date"
   const latestDates = useMemo(() => {
     const map: Record<string, string> = {};
     for (const pair of FOREX_PAIRS) {
       const list = analyses[pair.id];
-      if (list?.length) map[pair.id] = list[0].date; // descending — newest is first
+      if (list?.length) map[pair.id] = list[0].timestamp;
     }
     return map;
   }, [analyses]);
@@ -66,7 +68,6 @@ export default function PreTradeAnalysis() {
 
       {grouped.map((group, gi) => (
         <div key={gi}>
-          {/* Category / flag subheader */}
           {group.heading && (
             <div className="flex items-center gap-3 mt-4 mb-1 px-1">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
@@ -88,22 +89,7 @@ export default function PreTradeAnalysis() {
           >
             {group.pairs.map((pair) => {
               const allAnalyses = analyses[pair.id] ?? [];
-              const todaysSaved = allAnalyses.find((a) => a.date === today);
-              const rawDraft = getDraft(pair.id);
-              const draftIsEmpty = Object.values(rawDraft).every((v) => !v);
-              const draft =
-                draftIsEmpty && todaysSaved
-                  ? {
-                      weekly: todaysSaved.weekly ?? "",
-                      weeklyScreenshot: todaysSaved.weeklyScreenshot ?? "",
-                      daily: todaysSaved.daily ?? "",
-                      dailyScreenshot: todaysSaved.dailyScreenshot ?? "",
-                      fourHr: todaysSaved.fourHr ?? "",
-                      fourHrScreenshot: todaysSaved.fourHrScreenshot ?? "",
-                      oneHr: todaysSaved.oneHr ?? "",
-                      oneHrScreenshot: todaysSaved.oneHrScreenshot ?? "",
-                    }
-                  : rawDraft;
+              const draft = getDraft(pair.id);
 
               return (
                 <PairAccordionItem
@@ -111,21 +97,25 @@ export default function PreTradeAnalysis() {
                   pair={pair}
                   allAnalyses={allAnalyses}
                   draft={draft}
-                  saveStatus={saveStatus[pair.id] ?? "idle"}
+                  saveStatus={saveStatus(pair.id)}
                   deleting={deleting}
                   pairFlag={pairFlags[pair.id] ?? "none"}
                   isOpen={openPair === pair.id}
-                  onFlagChange={(c) =>
-                    setPairFlags((prev) => ({ ...prev, [pair.id]: c }))
-                  }
+                  today={today}
+                  cutoffHourUtc={cutoffHourUtc}
+                  currentHourKey={currentHourKey}
+                  onFlagChange={(c) => setPairFlag(pair.id, c)}
                   onDraftChange={(field, value) =>
-                    setDraftField(pair.id, field, value, today)
+                    setDraftField(pair.id, field, value)
                   }
-                  onViewReport={() => openReport(pair.name, draft, today)}
+                  onViewReport={() =>
+                    openReport(pair.name, draft, new Date().toISOString())
+                  }
                   onClearDraft={() => clearDraft(pair.id)}
                   onDeleteAnalysis={deleteAnalysis}
+                  onUpdateHistoricalAnalysis={updateHistoricalAnalysis}
                   onViewHistoryReport={(analysis) =>
-                    openReport(pair.name, analysis, analysis.date)
+                    openReport(pair.name, analysis, analysis.timestamp)
                   }
                 />
               );

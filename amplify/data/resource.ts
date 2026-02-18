@@ -18,24 +18,26 @@ const schema = a.schema({
   PreTradeAnalysis: a
     .model({
       pairId: a.string().required(),
-      date: a.date().required(),
+      timestamp: a.datetime().required(),
       weekly: a.string(),
       weeklyScreenshot: a.string(),
+      weeklySentiment: a.string(),
       daily: a.string(),
       dailyScreenshot: a.string(),
+      dailySentiment: a.string(),
       fourHr: a.string(),
       fourHrScreenshot: a.string(),
+      fourHrSentiment: a.string(),
       oneHr: a.string(),
       oneHrScreenshot: a.string(),
+      oneHrSentiment: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 
-  // One record per pair — stores persistent settings like flag colour.
-  // Upserted on flag change, never deleted.
   PairSettings: a
     .model({
       pairId: a.string().required(),
-      flag: a.string(), // FlagColor value
+      flag: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
