@@ -12,17 +12,17 @@ import { Loader2 } from "lucide-react";
 import { DraftAnalysis } from "@/types/types";
 import { getUrl } from "aws-amplify/storage";
 
-type ReportAnalysis = { id: string; date: string } & DraftAnalysis;
+type ReportAnalysis = { id?: string; timestamp: string } & DraftAnalysis;
 
 const TIMEFRAME_FIELDS: {
   label: string;
   note: keyof DraftAnalysis;
   screenshot: keyof DraftAnalysis;
 }[] = [
-  { label: "Weekly",  note: "weekly",  screenshot: "weeklyScreenshot"  },
-  { label: "Daily",   note: "daily",   screenshot: "dailyScreenshot"   },
-  { label: "4 Hour",  note: "fourHr",  screenshot: "fourHrScreenshot"  },
-  { label: "1 Hour",  note: "oneHr",   screenshot: "oneHrScreenshot"   },
+  { label: "Weekly", note: "weekly", screenshot: "weeklyScreenshot" },
+  { label: "Daily", note: "daily", screenshot: "dailyScreenshot" },
+  { label: "4 Hour", note: "fourHr", screenshot: "fourHrScreenshot" },
+  { label: "1 Hour", note: "oneHr", screenshot: "oneHrScreenshot" },
 ];
 
 // Resolves an S3 key → signed URL. Returns raw value if it's already a
@@ -49,7 +49,10 @@ function TimeframeSection({
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!screenshotKey) { setResolvedUrl(null); return; }
+    if (!screenshotKey) {
+      setResolvedUrl(null);
+      return;
+    }
     resolveScreenshot(screenshotKey).then(setResolvedUrl);
   }, [screenshotKey]);
 
@@ -61,22 +64,20 @@ function TimeframeSection({
       <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/90">
         {label}
       </h3>
-      {screenshotKey && (
-        resolvedUrl
-          ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolvedUrl}
-              alt={`${label} chart`}
-              className="w-full rounded-md border object-contain max-h-90"
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full aspect-video bg-muted/30 rounded border text-xs text-muted-foreground gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading…
-            </div>
-          )
-      )}
+      {screenshotKey &&
+        (resolvedUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolvedUrl}
+            alt={`${label} chart`}
+            className="w-full rounded-md border object-contain max-h-90"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full aspect-video bg-muted/30 rounded border text-xs text-muted-foreground gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading…
+          </div>
+        ))}
       {note.trim() && (
         <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
           {note}
@@ -95,7 +96,7 @@ export function AnalysisReportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pairName: string;
-  analysis: ReportAnalysis | null;
+  analysis: ReportAnalysis | null; // This now looks for timestamp
 }) {
   if (!analysis) return null;
 
@@ -112,11 +113,11 @@ export function AnalysisReportDialog({
           <DialogTitle className="flex items-center gap-3">
             <span className="text-lg font-bold tracking-wider">{pairName}</span>
             <span className="text-sm font-normal text-muted-foreground/80 tabular-nums">
-              {analysis.date}
+              {/* 2. Change analysis.date to analysis.timestamp */}
+              {new Date(analysis.timestamp).toLocaleString()}
             </span>
           </DialogTitle>
         </DialogHeader>
-
         {sections.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
             No analysis data for this entry.

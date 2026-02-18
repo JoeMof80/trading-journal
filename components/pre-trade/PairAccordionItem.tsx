@@ -50,7 +50,11 @@ export function PairAccordionItem({
   onViewReport: () => void;
   onClearDraft: () => void;
   onDeleteAnalysis: (id: string) => void;
-  onUpdateHistoricalAnalysis: (id: string, field: keyof DraftAnalysis, value: string) => void;
+  onUpdateHistoricalAnalysis: (
+    id: string,
+    field: keyof DraftAnalysis,
+    value: string,
+  ) => void;
   onViewHistoryReport: (analysis: Analysis) => void;
 }) {
   const currentHourAnalysis = allAnalyses.find(
