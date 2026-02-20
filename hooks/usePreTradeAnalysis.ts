@@ -262,9 +262,22 @@ export function usePreTradeAnalysis() {
 
       const hourTimestamp = getCurrentHourTimestamp();
 
+      console.log(
+        "[persistAnalysis] Hour timestamp:",
+        hourTimestamp,
+        "currentHourKey:",
+        currentHourKey,
+      );
+
       // Check if a record already exists for this hour
       const existing = analysesRef.current[pairId]?.find(
         (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
+      );
+
+      console.log(
+        "[persistAnalysis] Existing record:",
+        existing?.id,
+        existing?.timestamp,
       );
 
       // Also check if we've created one this hour (might not be in analyses yet due to subscription lag)
@@ -287,9 +300,19 @@ export function usePreTradeAnalysis() {
         oneHrSentiment: draft.oneHrSentiment || undefined,
       };
 
+      console.log("[persistAnalysis] Payload:", {
+        ...payload,
+        weekly: payload.weekly?.substring(0, 20),
+        daily: payload.daily?.substring(0, 20),
+      });
+
       try {
         if (existing) {
           // Update existing record
+          console.log(
+            "[persistAnalysis] Updating existing record:",
+            existing.id,
+          );
           const { errors } = await client.models.PreTradeAnalysis.update({
             id: existing.id,
             ...payload,
@@ -306,6 +329,7 @@ export function usePreTradeAnalysis() {
           }
         } else if (!alreadyCreated) {
           // Create new record (but only if we haven't already created one this hour)
+          console.log("[persistAnalysis] Creating new record");
           createdThisHourRef.current.add(key);
           const { errors } =
             await client.models.PreTradeAnalysis.create(payload);
@@ -411,6 +435,12 @@ export function usePreTradeAnalysis() {
         return;
       }
 
+      console.log("[updateHistoricalAnalysis] Analysis found:", {
+        id: analysis.id,
+        pairId: analysis.pairId,
+        timestamp: analysis.timestamp,
+      });
+
       // Build payload with required fields plus the changed field
       const payload: any = {
         id,
@@ -419,8 +449,11 @@ export function usePreTradeAnalysis() {
         [field]: value || undefined,
       };
 
+      console.log("[updateHistoricalAnalysis] Payload being sent:", payload);
+
       try {
-        await client.models.PreTradeAnalysis.update(payload);
+        const result = await client.models.PreTradeAnalysis.update(payload);
+        console.log("[updateHistoricalAnalysis] Update result:", result);
       } catch (err) {
         console.error("Update failed:", err);
       }
