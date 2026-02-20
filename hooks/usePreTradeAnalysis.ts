@@ -77,6 +77,10 @@ export function usePreTradeAnalysis() {
   const [analyses, setAnalyses] = useState<Record<string, Analysis[]>>({});
   // Drafts now keyed by `pairId-hourKey` e.g. "13-2026-02-16T14"
   const [drafts, setDrafts] = useState<Record<string, DraftAnalysis>>({});
+  // Track which drafts have been initialized (to prevent re-initialization on re-render)
+  const [draftsInitialized, setDraftsInitialized] = useState<Set<string>>(
+    new Set(),
+  );
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [pairFlags, setPairFlagsState] = useState<Record<string, FlagColor>>(
@@ -133,6 +137,7 @@ export function usePreTradeAnalysis() {
 
         // Clear the created-this-hour tracking
         createdThisHourRef.current.clear();
+        setDraftsInitialized(new Set());
         setCurrentHourKey(newHourKey);
       }
     }, 60000); // Check every minute
@@ -213,25 +218,40 @@ export function usePreTradeAnalysis() {
 
   const getDraft = (pairId: string): DraftAnalysis => {
     const key = `${pairId}-${currentHourKey}`;
-
-    // If we have a draft in state, return it
-    if (drafts[key]) {
-      return drafts[key];
-    }
-
-    // Otherwise, check if there's a saved record for the current hour
-    const currentHourAnalysis = analysesRef.current[pairId]?.find(
-      (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
-    );
-
-    if (currentHourAnalysis) {
-      // Initialize draft from saved record
-      return analysisToDF(currentHourAnalysis);
-    }
-
-    // No draft and no saved record - return empty
-    return { ...EMPTY_DRAFT };
+    return drafts[key] ?? { ...EMPTY_DRAFT };
   };
+
+  // Initialize drafts from saved current-hour records
+  useEffect(() => {
+    const newDrafts: Record<string, DraftAnalysis> = {};
+
+    for (const pairId in analyses) {
+      const key = `${pairId}-${currentHourKey}`;
+
+      // Skip if already initialized or already has a draft
+      if (draftsInitialized.has(key) || drafts[key]) {
+        continue;
+      }
+
+      // Check for saved current-hour record
+      const currentHourAnalysis = analyses[pairId]?.find(
+        (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
+      );
+
+      if (currentHourAnalysis) {
+        newDrafts[key] = analysisToDF(currentHourAnalysis);
+      }
+    }
+
+    if (Object.keys(newDrafts).length > 0) {
+      setDrafts((prev) => ({ ...prev, ...newDrafts }));
+      setDraftsInitialized((prev) => {
+        const next = new Set(prev);
+        Object.keys(newDrafts).forEach((key) => next.add(key));
+        return next;
+      });
+    }
+  }, [analyses, currentHourKey, drafts, draftsInitialized]);
 
   // Create or update the current hour's record
   const persistAnalysis = useCallback(
@@ -336,6 +356,7 @@ export function usePreTradeAnalysis() {
 
   const clearDraft = async (pairId: string) => {
     const key = `${pairId}-${currentHourKey}`;
+    console.log("[clearDraft] Clearing draft for", key);
     clearTimeout(autosaveTimers.current[key]);
 
     // If a saved record exists for the current hour, delete it too
@@ -343,12 +364,21 @@ export function usePreTradeAnalysis() {
       (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
     );
     if (existing) {
+      console.log("[clearDraft] Found existing record, deleting:", existing.id);
       await deleteAnalysis(existing.id);
+    } else {
+      console.log("[clearDraft] No existing record found");
     }
 
     setDrafts((prev) => {
       const next = { ...prev };
       delete next[key];
+      console.log("[clearDraft] Draft state after clear:", Object.keys(next));
+      return next;
+    });
+    setDraftsInitialized((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
       return next;
     });
     setSaveStatus((prev) => ({ ...prev, [key]: "idle" }));
@@ -366,30 +396,25 @@ export function usePreTradeAnalysis() {
     }
   };
 
-  // Update a historical analysis record directly (not current draft)
-  const updateHistoricalAnalysis = async (
-    id: string,
-    field: keyof DraftAnalysis,
-    value: string,
-  ) => {
-    if (!client.models.PreTradeAnalysis) return;
+  // Update a historical analysis record - immediate single-field update
+  const updateHistoricalAnalysis = useCallback(
+    async (id: string, field: keyof DraftAnalysis, value: string) => {
+      if (!client.models.PreTradeAnalysis) return;
 
-    // Find the analysis being edited
-    const analysis = Object.values(analysesRef.current)
-      .flat()
-      .find((a) => a.id === id);
-    if (!analysis) return;
+      // Build minimal payload with just the changed field
+      const payload: any = {
+        id,
+        [field]: value || undefined,
+      };
 
-    // Build update payload with only the changed field
-    const payload: any = { id };
-    payload[field] = value || undefined;
-
-    try {
-      await client.models.PreTradeAnalysis.update(payload);
-    } catch (err) {
-      console.error("Update failed:", err);
-    }
-  };
+      try {
+        await client.models.PreTradeAnalysis.update(payload);
+      } catch (err) {
+        console.error("Update failed:", err);
+      }
+    },
+    [],
+  );
 
   // ── Report ───────────────────────────────────────────────────────────────
 

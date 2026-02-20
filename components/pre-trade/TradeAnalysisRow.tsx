@@ -93,6 +93,7 @@ export function TradeAnalysisRow({
   values,
   onChange,
   readOnly = false,
+  isDraft = false,
   onViewReport,
   onDelete,
   isDeleting = false,
@@ -103,6 +104,7 @@ export function TradeAnalysisRow({
   values: DraftAnalysis;
   onChange?: (field: keyof DraftAnalysis, value: string) => void;
   readOnly?: boolean;
+  isDraft?: boolean;
   onViewReport?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
@@ -114,7 +116,7 @@ export function TradeAnalysisRow({
       <div className="w-32 shrink-0 flex flex-col gap-1 pt-3">
         <TimestampLabel
           timestamp={timestamp}
-          isDraft={!readOnly}
+          isDraft={isDraft}
           cutoffHourUtc={cutoffHourUtc}
         />
         {saveStatus && saveStatus !== "idle" && (
@@ -165,7 +167,7 @@ export function TradeAnalysisRow({
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <FileText className="h-3.5 w-3.5" />
-                {readOnly ? "View report" : "Preview report"}
+                {isDraft ? "Preview report" : "View report"}
               </DropdownMenuItem>
             )}
             {onViewReport && onDelete && <DropdownMenuSeparator />}
@@ -180,7 +182,7 @@ export function TradeAnalysisRow({
                 ) : (
                   <Trash2 className="h-3.5 w-3.5" />
                 )}
-                {readOnly ? "Delete" : "Clear draft"}
+                {isDraft ? "Clear draft" : "Delete"}
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

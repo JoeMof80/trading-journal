@@ -50,11 +50,7 @@ export function PairAccordionItem({
   onViewReport: () => void;
   onClearDraft: () => void;
   onDeleteAnalysis: (id: string) => void;
-  onUpdateHistoricalAnalysis: (
-    id: string,
-    field: keyof DraftAnalysis,
-    value: string,
-  ) => void;
+  onUpdateHistoricalAnalysis: (id: string, field: keyof DraftAnalysis, value: string) => void;
   onViewHistoryReport: (analysis: Analysis) => void;
 }) {
   const currentHourAnalysis = allAnalyses.find(
@@ -196,6 +192,7 @@ export function PairAccordionItem({
           timestamp={new Date().toISOString()}
           values={draft}
           onChange={onDraftChange}
+          isDraft={true}
           saveStatus={saveStatus}
           onViewReport={onViewReport}
           onDelete={onClearDraft}
@@ -211,6 +208,7 @@ export function PairAccordionItem({
         ) : (
           pairAnalyses.map((analysis) => {
             const rowFlagOpt = getFlagOption("none");
+            
             return (
               <div
                 key={analysis.id}
@@ -221,20 +219,16 @@ export function PairAccordionItem({
                   values={{
                     weekly: analysis.weekly ?? "",
                     weeklyScreenshot: analysis.weeklyScreenshot ?? "",
-                    weeklySentiment: (analysis.weeklySentiment ??
-                      "none") as DraftAnalysis["weeklySentiment"],
+                    weeklySentiment: (analysis.weeklySentiment ?? "none") as DraftAnalysis["weeklySentiment"],
                     daily: analysis.daily ?? "",
                     dailyScreenshot: analysis.dailyScreenshot ?? "",
-                    dailySentiment: (analysis.dailySentiment ??
-                      "none") as DraftAnalysis["dailySentiment"],
+                    dailySentiment: (analysis.dailySentiment ?? "none") as DraftAnalysis["dailySentiment"],
                     fourHr: analysis.fourHr ?? "",
                     fourHrScreenshot: analysis.fourHrScreenshot ?? "",
-                    fourHrSentiment: (analysis.fourHrSentiment ??
-                      "none") as DraftAnalysis["fourHrSentiment"],
+                    fourHrSentiment: (analysis.fourHrSentiment ?? "none") as DraftAnalysis["fourHrSentiment"],
                     oneHr: analysis.oneHr ?? "",
                     oneHrScreenshot: analysis.oneHrScreenshot ?? "",
-                    oneHrSentiment: (analysis.oneHrSentiment ??
-                      "none") as DraftAnalysis["oneHrSentiment"],
+                    oneHrSentiment: (analysis.oneHrSentiment ?? "none") as DraftAnalysis["oneHrSentiment"],
                   }}
                   onChange={(field, value) =>
                     onUpdateHistoricalAnalysis(analysis.id, field, value)

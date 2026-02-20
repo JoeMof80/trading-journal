@@ -109,11 +109,7 @@ export default function PreTradeAnalysis() {
                     setDraftField(pair.id, field, value)
                   }
                   onViewReport={() =>
-                    openReport(
-                      pair.name,
-                      { ...draft, timestamp: new Date().toISOString() },
-                      new Date().toISOString(),
-                    )
+                    openReport(pair.name, draft, new Date().toISOString())
                   }
                   onClearDraft={() => clearDraft(pair.id)}
                   onDeleteAnalysis={deleteAnalysis}
