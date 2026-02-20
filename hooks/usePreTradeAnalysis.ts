@@ -401,9 +401,21 @@ export function usePreTradeAnalysis() {
     async (id: string, field: keyof DraftAnalysis, value: string) => {
       if (!client.models.PreTradeAnalysis) return;
 
-      // Build minimal payload with just the changed field
+      // Find the record to get its required fields
+      const analysis = Object.values(analysesRef.current)
+        .flat()
+        .find((a) => a.id === id);
+
+      if (!analysis) {
+        console.error("[updateHistoricalAnalysis] Record not found:", id);
+        return;
+      }
+
+      // Build payload with required fields plus the changed field
       const payload: any = {
         id,
+        pairId: analysis.pairId,
+        timestamp: analysis.timestamp,
         [field]: value || undefined,
       };
 
