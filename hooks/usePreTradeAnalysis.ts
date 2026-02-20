@@ -331,13 +331,20 @@ export function usePreTradeAnalysis() {
           // Create new record (but only if we haven't already created one this hour)
           console.log("[persistAnalysis] Creating new record");
           createdThisHourRef.current.add(key);
-          const { errors } =
+          const { data, errors } =
             await client.models.PreTradeAnalysis.create(payload);
           if (errors) {
             console.error("Save errors:", errors);
             createdThisHourRef.current.delete(key); // Allow retry on error
             setSaveStatus((prev) => ({ ...prev, [key]: "idle" }));
           } else {
+            // Optimistically add to analysesRef so subsequent updates can find it
+            if (data) {
+              setAnalyses((prev) => ({
+                ...prev,
+                [pairId]: [data, ...(prev[pairId] || [])],
+              }));
+            }
             setSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
             setTimeout(
               () => setSaveStatus((prev) => ({ ...prev, [key]: "idle" })),
