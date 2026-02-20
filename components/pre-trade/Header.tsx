@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { label: "Pre-Trade Analysis", href: "/analysis" },
   { label: "Trade Journal", href: "/journal" },
   { label: "Settings", href: "/settings" },
+  { label: "HTF Analysis", href: "/htf-analysis" },
 ];
 
 function ThemeToggle() {

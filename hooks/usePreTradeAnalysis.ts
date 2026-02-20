@@ -98,6 +98,9 @@ export function usePreTradeAnalysis() {
   }, [analyses]);
   const pairSettingsIdRef = useRef<Record<string, string>>({});
 
+  // Track which pairId-hourKey combos have had records created (to prevent duplicates)
+  const createdThisHourRef = useRef<Set<string>>(new Set());
+
   // ── Hourly draft refresh ─────────────────────────────────────────────────
   // Check every minute if the hour has changed. If so, persist current drafts
   // (if non-empty) and reset to fresh drafts with new timestamps.
@@ -128,6 +131,8 @@ export function usePreTradeAnalysis() {
           return {};
         });
 
+        // Clear the created-this-hour tracking
+        createdThisHourRef.current.clear();
         setCurrentHourKey(newHourKey);
       }
     }, 60000); // Check every minute
@@ -208,7 +213,24 @@ export function usePreTradeAnalysis() {
 
   const getDraft = (pairId: string): DraftAnalysis => {
     const key = `${pairId}-${currentHourKey}`;
-    return drafts[key] ?? { ...EMPTY_DRAFT };
+
+    // If we have a draft in state, return it
+    if (drafts[key]) {
+      return drafts[key];
+    }
+
+    // Otherwise, check if there's a saved record for the current hour
+    const currentHourAnalysis = analysesRef.current[pairId]?.find(
+      (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
+    );
+
+    if (currentHourAnalysis) {
+      // Initialize draft from saved record
+      return analysisToDF(currentHourAnalysis);
+    }
+
+    // No draft and no saved record - return empty
+    return { ...EMPTY_DRAFT };
   };
 
   // Create or update the current hour's record
@@ -224,6 +246,9 @@ export function usePreTradeAnalysis() {
       const existing = analysesRef.current[pairId]?.find(
         (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
       );
+
+      // Also check if we've created one this hour (might not be in analyses yet due to subscription lag)
+      const alreadyCreated = createdThisHourRef.current.has(key);
 
       const payload = {
         pairId,
@@ -243,16 +268,41 @@ export function usePreTradeAnalysis() {
       };
 
       try {
-        const { errors } = existing
-          ? await client.models.PreTradeAnalysis.update({
-              id: existing.id,
-              ...payload,
-            })
-          : await client.models.PreTradeAnalysis.create(payload);
-        if (errors) {
-          console.error("Save errors:", errors);
-          setSaveStatus((prev) => ({ ...prev, [key]: "idle" }));
+        if (existing) {
+          // Update existing record
+          const { errors } = await client.models.PreTradeAnalysis.update({
+            id: existing.id,
+            ...payload,
+          });
+          if (errors) {
+            console.error("Save errors:", errors);
+            setSaveStatus((prev) => ({ ...prev, [key]: "idle" }));
+          } else {
+            setSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
+            setTimeout(
+              () => setSaveStatus((prev) => ({ ...prev, [key]: "idle" })),
+              2500,
+            );
+          }
+        } else if (!alreadyCreated) {
+          // Create new record (but only if we haven't already created one this hour)
+          createdThisHourRef.current.add(key);
+          const { errors } =
+            await client.models.PreTradeAnalysis.create(payload);
+          if (errors) {
+            console.error("Save errors:", errors);
+            createdThisHourRef.current.delete(key); // Allow retry on error
+            setSaveStatus((prev) => ({ ...prev, [key]: "idle" }));
+          } else {
+            setSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
+            setTimeout(
+              () => setSaveStatus((prev) => ({ ...prev, [key]: "idle" })),
+              2500,
+            );
+          }
         } else {
+          // Already created, subscription just hasn't caught up yet
+          console.log(`Skipping duplicate create for ${key}`);
           setSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
           setTimeout(
             () => setSaveStatus((prev) => ({ ...prev, [key]: "idle" })),
@@ -287,7 +337,7 @@ export function usePreTradeAnalysis() {
   const clearDraft = async (pairId: string) => {
     const key = `${pairId}-${currentHourKey}`;
     clearTimeout(autosaveTimers.current[key]);
-    
+
     // If a saved record exists for the current hour, delete it too
     const existing = analysesRef.current[pairId]?.find(
       (a) => a.timestamp && a.timestamp.startsWith(currentHourKey),
@@ -295,7 +345,7 @@ export function usePreTradeAnalysis() {
     if (existing) {
       await deleteAnalysis(existing.id);
     }
-    
+
     setDrafts((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -323,7 +373,7 @@ export function usePreTradeAnalysis() {
     value: string,
   ) => {
     if (!client.models.PreTradeAnalysis) return;
-    
+
     // Find the analysis being edited
     const analysis = Object.values(analysesRef.current)
       .flat()
