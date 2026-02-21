@@ -19,10 +19,6 @@ export function AnalysisSummary({ analysis }: { analysis: Analysis | null }) {
   );
   if (!hasAny) return null;
 
-  // Helper to handle enter/leave for both trigger and content
-  const handleEnter = (label: string) => setOpenPopover(label);
-  const handleLeave = () => setOpenPopover(null);
-
   return (
     <div className="grid grid-cols-4 flex-1 gap-4 min-w-0">
       {SUMMARY_FIELDS.map(({ label, key, sentimentKey }) => {
@@ -50,36 +46,36 @@ export function AnalysisSummary({ analysis }: { analysis: Analysis | null }) {
           <Popover
             key={label}
             open={openPopover === label}
-            onOpenChange={(open) => !open && setOpenPopover(null)}
+            onOpenChange={(open) => setOpenPopover(open ? label : null)}
           >
-            <PopoverTrigger asChild>
-              <div
-                className="flex items-center gap-1.5 min-w-0"
-                onMouseEnter={() => handleEnter(label)}
-                onMouseLeave={handleLeave}
-              >
-                <span
+            <div className="flex items-center gap-1.5 min-w-0">
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
                   className={cn(
-                    "text-xs font-semibold uppercase tracking-widest shrink-0 ml-3 transition-colors",
+                    "text-xs font-semibold uppercase tracking-widest shrink-0 ml-3 transition-colors cursor-pointer hover:opacity-70 underline decoration-dotted underline-offset-2",
                     sentimentClass(sentiment),
                   )}
                 >
                   {label}
-                </span>
-                <span className="text-xs text-foreground/75 truncate">
-                  {text}
-                </span>
-              </div>
-            </PopoverTrigger>
+                </button>
+              </PopoverTrigger>
+              <span className="text-xs text-foreground/75 truncate">
+                {text}
+              </span>
+            </div>
 
             <PopoverContent
               side="bottom"
               align="start"
               sideOffset={-25}
-              alignOffset={0}
-              onMouseEnter={() => handleEnter(label)}
-              onMouseLeave={handleLeave}
-              className="w-96 p-0 bg-muted border shadow-2xl overflow-hidden rounded-md z-50"
+              alignOffset={-13}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenPopover(null);
+              }}
+              className="w-96 p-0 bg-muted border shadow-2xl overflow-hidden rounded-md z-50 cursor-pointer"
             >
               <div className="flex items-start gap-1.5 min-w-0 p-2">
                 <span
